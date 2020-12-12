@@ -1,0 +1,14 @@
+*.ts
+!*.d.ts
+coverage
+
+test
+node_modules
+doc
+example
+
+tsconfig.json
+tslint.json
+jest.config.js
+
+*.svg
