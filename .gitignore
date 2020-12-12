@@ -1,4 +1,5 @@
 lib/*.js
+lib/*.d.ts
 
 # Logs
 logs
