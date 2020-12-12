@@ -17,9 +17,8 @@ AWS API Gateway and AWS Lambda is a perfect approach for quick prototyping or pr
 
 The library helps with
 * building of lambda functions by integrating "compilation" process within cdk workflows. The following languages are supported:
-- [x] Golang
-- [ ] TypeScript
-
+  - [x] Golang
+  - [ ] TypeScript
 * integrates validation of OAuth2 Bearer token for each API endpoint
 
 
