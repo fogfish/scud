@@ -3,6 +3,11 @@
 `scud` is a Simple Cloud Usable Daemon for serverless RESTful API development. 
 This library is AWS CDK pattern that takes care about infrastructure boilerplate so that you focuses on development of application logic. 
 
+[![Build Status](https://github.com/fogfish/scud/workflows/build/badge.svg)](https://github.com/fogfish/scud/actions/)
+[![Git Hub](https://img.shields.io/github/last-commit/fogfish/scud.svg)](https://github.com/fogfish/scud)
+[![Coverage Status](https://coveralls.io/repos/github/fogfish/scud/badge.svg?branch=master)](https://coveralls.io/github/fogfish/scud?branch=master)
+[![npm](https://img.shields.io/npm/v/aws-scud)](https://www.npmjs.com/package/aws-scud)
+
 
 ## Inspiration
 
@@ -12,8 +17,8 @@ AWS API Gateway and AWS Lambda is a perfect approach for quick prototyping or pr
 
 The library helps with
 * building of lambda functions by integrating "compilation" process within cdk workflows. The following languages are supported:
-  -[x] Golang
-  -[ ] TypeScript
+-[x] Golang
+-[ ] TypeScript
 * integrates validation of OAuth2 Bearer token for each API endpoint
 
 
