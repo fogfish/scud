@@ -13,7 +13,7 @@ This library is AWS CDK pattern that takes care about infrastructure boilerplate
 
 AWS API Gateway and AWS Lambda is a perfect approach for quick prototyping or production development of microservice on Amazon Web Services. Unfortunately, it requires a boilerplate AWS CDK code to bootstrap the development. This library implements a high-order components on top of AWS CDK that hardens the api pattern
 
-![RESTful API Pattern](scud.svg =300x300 "RESTful API Pattern")
+![RESTful API Pattern](scud.svg "RESTful API Pattern")
 
 The library helps with
 * building of lambda functions by integrating "compilation" process within cdk workflows. The following languages are supported:
