@@ -9,7 +9,6 @@ import * as cdk from '@aws-cdk/core'
 import * as lambda from '@aws-cdk/aws-lambda'
 import * as pure from 'aws-cdk-pure'
 import * as api from '@aws-cdk/aws-apigateway'
-import * as cognito from '@aws-cdk/aws-cognito'
 
 /*
 
@@ -53,14 +52,15 @@ const OAuth2 = (
 requireOAuth2 enforces a policy to REST API endpoint
 */
 const requireOAuth2 = (
-  authorizerId: string
+  authorizerId: string,
+  scopes: string[]
 ): api.MethodOptions => ({
   authorizer: { authorizerId },
   authorizationType: api.AuthorizationType.COGNITO,
   requestParameters: {
     "method.request.header.Authorization": true,
   },
-  authorizationScopes: [cognito.OAuthScope.OPENID.scopeName]
+  authorizationScopes: scopes
 })
 
 
@@ -104,12 +104,13 @@ function effectService(eff: Effect): Service {
   service.addResource = (
     resourceRootPath: string,
     resourceHandler: pure.IPure<lambda.Function>,
+    resourceScopes?: string[],
   ): Service =>
     effectService(
       eff.flatMap(
         _ => ({ h: pure.wrap(api.LambdaIntegration)(resourceHandler) })
       ).effect( ({ gateway, authorizer, h }) => {
-        const require = authorizer && requireOAuth2(authorizer.ref)
+        const require = (authorizer && resourceScopes) && requireOAuth2(authorizer.ref, resourceScopes)
 
         const root = gateway.root.addResource(resourceRootPath)
         root.addMethod('ANY', h, require)

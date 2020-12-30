@@ -1,6 +1,6 @@
 {
   "name": "aws-scud",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "scud - simple cloud usable daemon",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
