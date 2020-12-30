@@ -75,7 +75,7 @@ type Effect = pure.IEffect<{
 
 export type Service = Effect & {
   enableOAuth2(cognitoUserPools: string[]): Service
-  addResource(path: string, handler: pure.IPure<lambda.Function>): Service
+  addResource(path: string, handler: pure.IPure<lambda.Function>, scopes?: string[]): Service
 }
 
 export const mkService = (
