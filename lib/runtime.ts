@@ -14,9 +14,9 @@ import * as fs from 'fs'
 
 /**
  * Bundles Golang Lambda function from source
- * 
+ *
  * @param sourceCodePackage - absolute path to source code of serverless app (e.g. $GOPATH/src/github.com/fogfish/scud)
- * @param sourceCodeLambda  - relative path to lambda function, the path to main package 
+ * @param sourceCodeLambda  - relative path to lambda function, the path to main package
  */
 export function AssetCodeGo(sourceCodePackage: string, sourceCodeLambda: string): lambda.Code {
   return new lambda.AssetCode('', {
@@ -41,6 +41,7 @@ const hash = (source: string): string => {
       sha.update('</file>')
     })
   const codeHash = sha.digest('hex')
+  // tslint:disable-next-line:no-console
   console.log(`==> ${source} ${codeHash}`)
   return codeHash
 }
