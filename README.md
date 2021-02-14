@@ -41,7 +41,8 @@ import * as pure from 'aws-cdk-pure'
 // 1. declare lambda function
 const MyFun = (): lambda.FunctionProps =>
   scud.handler.Go({
-    code: path.join(__dirname, './myfun'),
+    sourceCodePackage: path.join(__dirname, '.'),
+    sourceCodeLambda: 'myfun',
     /* optionally other lambda.FunctionProps */
   })
 
