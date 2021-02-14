@@ -18,7 +18,8 @@ const Gateway = (): api.RestApiProps => scud.Gateway({
 
 const Handler = (): lambda.FunctionProps =>
   scud.handler.Go({
-    code: './test/lambda/go',
+    sourceCodePackage: './test/lambda/go',
+    sourceCodeLambda: '.',
   })
 
 //
