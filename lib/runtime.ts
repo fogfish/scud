@@ -26,20 +26,30 @@ export function AssetCodeGo(sourceCodePackage: string, sourceCodeLambda: string)
   })
 }
 
-const hash = (source: string): string => {
-  const goFiles = new RegExp('(.*\.go)|(.*\.(mod|sum))$')
-  const sha = crypto.createHash('sha256')
-  const dirents = fs.readdirSync(source, { withFileTypes: true })
-  dirents
+const walk = (dirname: string): string[] => {
+  const goFiles = new RegExp('(.*\.go$)|(.*\.(mod|sum)$)')
+  const dirents = fs.readdirSync(dirname, { withFileTypes: true })
+  const files = dirents
     .filter(dirent => dirent.isFile())
     .filter(dirent => goFiles.test(dirent.name))
-    .map(dirent => dirent.name)
-    .forEach(file => {
-      const data = fs.readFileSync(path.join(source, file))
-      sha.update(`<file name=${file}>`)
-      sha.update(data)
-      sha.update('</file>')
-    })
+    .map(dirent => path.join(dirname, dirent.name))
+
+  const subdirs = dirents
+    .filter(dirent => dirent.isDirectory())
+    .map(dirent => walk(path.join(dirname, dirent.name)))
+
+  return files.concat(...subdirs)
+}
+
+const hash = (source: string): string => {
+  const sha = crypto.createHash('sha256')
+
+  walk(source).forEach(file => {
+    const data = fs.readFileSync(file)
+    sha.update(`<file name=${file}>`)
+    sha.update(data)
+    sha.update('</file>')
+  })
   const codeHash = sha.digest('hex')
   // tslint:disable-next-line:no-console
   console.log(`==> ${source} ${codeHash}`)
