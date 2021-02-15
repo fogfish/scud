@@ -33,11 +33,11 @@ const walk = (dirname: string): string[] => {
     .filter(dirent => dirent.isFile())
     .filter(dirent => goFiles.test(dirent.name))
     .map(dirent => path.join(dirname, dirent.name))
-  
+
   const subdirs = dirents
     .filter(dirent => dirent.isDirectory())
     .map(dirent => walk(path.join(dirname, dirent.name)))
-  
+
   return files.concat(...subdirs)
 }
 
