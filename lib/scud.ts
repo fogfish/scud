@@ -108,7 +108,7 @@ function effectService(eff: Effect): Service {
   ): Service =>
     effectService(
       eff.flatMap(
-        _ => ({ h: pure.wrap(api.LambdaIntegration)(resourceHandler) })
+        () => ({ h: pure.wrap(api.LambdaIntegration)(resourceHandler) })
       ).effect( ({ gateway, authorizer, h }) => {
         const require = (authorizer && resourceScopes) && requireOAuth2(authorizer.ref, resourceScopes)
 
