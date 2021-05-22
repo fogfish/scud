@@ -2,8 +2,8 @@ name: build
 on:
   push:
     branches:
-      - master
-      - /refs/heads/master
+      - main
+      - /refs/heads/main
 
 jobs:
   it:
@@ -34,3 +34,4 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
