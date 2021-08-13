@@ -30,7 +30,7 @@ The latest version of the library is available at its `main` branch. All develop
 npm install --save aws-scud
 ```
 
-### Example RESTfull API 
+### Example RESTful API 
 
 ```ts
 import * as api from '@aws-cdk/aws-apigateway'
@@ -63,8 +63,28 @@ pure.join(stack, service)
 ```
 
 Please see the RESTful API templates, clone them to draft a new microservice in matter of minutes:
-* [scud-golang](https://github.com/fogfish/scud-golang)
+* [blueprint-serverless-golang](https://github.com/fogfish/blueprint-serverless-golang)
 
+
+### Example RESTful API with Domain Name
+
+Supply custom domain name and ARN of Certificate
+
+```ts
+const service = scud.mkService(Gateway)
+  .configRoute53('test.example.com', 'arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000')
+```
+
+
+### Example protect RESTful API with OAuth2
+
+The construct supports integration with AWS Cognito, the integration of AWS API Gateway and AWS Cognito is well depicted by [official documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html). The pattern enables deployment of this configuration, just supply ARN of user pool and supply scopes to protect endpoints 
+
+```ts
+const service = scud.mkService(Gateway)
+  .configOAuth2([ "arn:aws:cognito-idp:..." ])
+  .addResource('hello', scud.aws.Lambda(MyFun), ["my/scope"])
+```
 
 ## HowTo Contribute
 

@@ -47,18 +47,45 @@ it('create REST API gateway', () => {
 
 //
 //
-it('enables cognito based authorizer', () => {
+it('config cognito based authorizer', () => {
   const stack = new cdk.Stack()
 
   pure.join(stack,
     scud.mkService(Gateway)
-      .enableOAuth2([
+      .configOAuth2([
         "arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX",
       ])
   )
 
   const requires: {[key: string]: number} = {
     'AWS::ApiGateway::Authorizer': 1,
+  }
+
+  Object.keys(requires).forEach(
+    key => assert.expect(stack).to(
+      assert.countResources(key, requires[key])
+    )
+  )
+})
+
+//
+//
+it('config Route53 record', () => {
+  const stack = new cdk.Stack(new cdk.App(), 'stack', {
+    env: {
+      account: '000000000000',
+      region: 'eu-west-1',
+    }
+  })
+  
+  pure.join(stack,
+    scud.mkService(Gateway)
+      .configRoute53('test.example.com', 'arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000')
+  )
+
+  const requires: {[key: string]: number} = {
+    'AWS::ApiGateway::DomainName': 1,
+    'AWS::Route53::RecordSet': 1,
   }
 
   Object.keys(requires).forEach(
