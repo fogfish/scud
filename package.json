@@ -25,21 +25,21 @@
     "@aws-cdk/aws-route53": "*",
     "@aws-cdk/aws-route53-targets": "*",
     "@aws-cdk/core": "*",
-    "@types/node": "16.6.1",
-    "aws-cdk-pure": "^1.3.20"
+    "@types/node": "16.11.1",
+    "aws-cdk-pure": "^1.3.22"
   },
   "devDependencies": {
     "@aws-cdk/assert": "*",
-    "@types/jest": "^27.0.1",
-    "@typescript-eslint/eslint-plugin": "^4.29.1",
-    "@typescript-eslint/parser": "^4.29.1",
+    "@types/jest": "^27.0.2",
+    "@typescript-eslint/eslint-plugin": "^5.1.0",
+    "@typescript-eslint/parser": "^5.1.0",
     "coveralls": "^3.1.1",
-    "eslint": "^7.32.0",
+    "eslint": "^8.0.1",
     "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^3.4.0",
-    "jest": "^27.0.6",
-    "ts-jest": "^27.0.4",
-    "ts-node": "^10.2.0",
-    "typescript": "^4.3.5"
+    "eslint-plugin-prettier": "^4.0.0",
+    "jest": "^27.3.1",
+    "ts-jest": "^27.0.7",
+    "ts-node": "^10.3.0",
+    "typescript": "^4.4.4"
   }
 }
