@@ -44,7 +44,7 @@ func TestCreateGateway(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
 
-	scud.NewGateway(stack, jsii.String("GW"))
+	scud.NewGateway(stack, jsii.String("GW"), nil)
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGateway::RestApi"):    jsii.Number(1),
@@ -70,7 +70,7 @@ func TestAddResource(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW")).
+	scud.NewGateway(stack, jsii.String("GW"), nil).
 		AddResource("test", f)
 
 	require := map[*string]*float64{
@@ -100,7 +100,7 @@ func TestConfigAuthorizer(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW")).
+	scud.NewGateway(stack, jsii.String("GW"), nil).
 		ConfigAuthorizer("arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX").
 		AddResource("test", f, "test")
 
@@ -125,7 +125,7 @@ func TestConfigRoute53(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW")).
+	scud.NewGateway(stack, jsii.String("GW"), nil).
 		ConfigRoute53("test.example.com", "arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000")
 
 	require := map[*string]*float64{
