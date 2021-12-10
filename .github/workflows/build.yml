@@ -6,32 +6,28 @@ on:
       - /refs/heads/main
 
 jobs:
-  it:
+  build:
     runs-on: ubuntu-latest
     steps:
+
+      - name: golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
 
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: install
+      - name: go build
         run: |
-          npm install
-
-      - name: build
+          go build ./...
+    
+      - name: go test
         run: |
-          npm run build
+          go test -v -coverprofile=profile.cov ./...
+        env:
+          GOPATH: /home/runner/work/scud/go
 
-      - name: lint
-        run: |
-          npm run lint
-
-      - name: test
-        run: |
-          (cd ./test/lambda/go; go get -d)
-          npm run test
-
-      - name: coveralls
-        uses: coverallsapp/github-action@master
+      - uses: shogo82148/actions-goveralls@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
+          path-to-profile: profile.cov
