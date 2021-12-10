@@ -13,6 +13,7 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/fogfish/scud"
 )
@@ -44,7 +45,11 @@ func TestCreateGateway(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
 
-	scud.NewGateway(stack, jsii.String("GW"), nil)
+	scud.NewGateway(stack, jsii.String("GW"),
+		&awsapigateway.RestApiProps{
+			RestApiName: jsii.String("test"),
+		},
+	)
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGateway::RestApi"):    jsii.Number(1),
@@ -57,6 +62,11 @@ func TestCreateGateway(t *testing.T) {
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
+	template.HasResourceProperties(jsii.String("AWS::ApiGateway::RestApi"),
+		map[string]interface{}{
+			"Name": "test",
+		},
+	)
 }
 
 func TestAddResource(t *testing.T) {
