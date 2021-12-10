@@ -6,31 +6,38 @@ on:
       - synchronize
 
 jobs:
-  it:
+  check:
     runs-on: ubuntu-latest
     steps:
 
+      - name: golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
       - name: checkout
         uses: actions/checkout@v2
-
-      - name: install
+ 
+      - name: go get tools
         run: |
-          npm install
-
-      - name: build
+          go get golang.org/x/lint/golint
+    
+      - name: go build
         run: |
-          npm run build
-
-      - name: lint
+          go build ./...
+    
+      - name: go vet
         run: |
-          npm run lint
-
-      - name: test
+          go vet ./...
+  
+      - name: golint
         run: |
-          (cd ./test/lambda/go; go get -d)
-          npm run test
+          golint ./...
 
-      - name: coveralls
-        uses: coverallsapp/github-action@master
+      - name: go test
+        run: |
+          go test -v -coverprofile=profile.cov ./...
+
+      - uses: shogo82148/actions-goveralls@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-profile: profile.cov

@@ -3,10 +3,10 @@
 `scud` is a Simple Cloud Usable Daemon for serverless RESTful API development. 
 This library is AWS CDK pattern that takes care about infrastructure boilerplate so that you focuses on development of application logic. 
 
+[![Version](https://img.shields.io/github/v/tag/fogfish/scud?label=version)](https://github.com/fogfish/scud/tags)
 [![Build Status](https://github.com/fogfish/scud/workflows/build/badge.svg)](https://github.com/fogfish/scud/actions/)
 [![Git Hub](https://img.shields.io/github/last-commit/fogfish/scud.svg)](https://github.com/fogfish/scud)
 [![Coverage Status](https://coveralls.io/repos/github/fogfish/scud/badge.svg?branch=main)](https://coveralls.io/github/fogfish/scud?branch=main)
-[![npm](https://img.shields.io/npm/v/aws-scud)](https://www.npmjs.com/package/aws-scud)
 
 
 ## Inspiration
@@ -15,51 +15,57 @@ AWS API Gateway and AWS Lambda is a perfect approach for quick prototyping or pr
 
 ![RESTful API Pattern](scud.svg "RESTful API Pattern")
 
-The library helps with
-* building of lambda functions by integrating "compilation" process within cdk workflows. The following languages are supported:
-  - [x] Golang
-  - [ ] TypeScript
+The library helps with building of lambda functions by
+* integrating "compilation" fo Golang serverless functions within cdk workflows.
 * integrates validation of OAuth2 Bearer token for each API endpoint
 
 
 ## Getting started
 
-The latest version of the library is available at its `main` branch. All development, including new features and bug fixes, take place on the `main` branch using forking and pull requests as described in contribution guidelines.
+The latest version of the library is available at its `main` branch. All development, including new features and bug fixes, take place on the `main` branch using forking and pull requests as described in contribution guidelines. The stable version is available via Golang modules.
 
+1. Use `go get` to retrieve the library and add it as dependency to your application.
+
+```bash
+go get -u github.com/fogfish/scud
 ```
-npm install --save aws-scud
+
+2. Import it in your code
+
+```go
+import "github.com/fogfish/scud"
 ```
 
 ### Example RESTful API 
 
-```ts
+```go
+import "github.com/fogfish/scud"
+
 import * as api from '@aws-cdk/aws-apigateway'
 import * as lambda from '@aws-cdk/aws-lambda'
 import * as scud from 'scud'
 import * as pure from 'aws-cdk-pure'
 
-// 1. declare lambda function
-const MyFun = (): lambda.FunctionProps =>
-  scud.handler.Go({
-    sourceCodePackage: path.join(__dirname, '.'),
-    sourceCodeLambda: 'myfun',
-    /* optionally other lambda.FunctionProps */
-  })
+func NewService(scope constructs.Construct) {
+  // 1. declare lambda function
+  myfun := scud.NewFunctionGo(scope, jsii.String("test"),
+    &scud.FunctionGoProps{
+      SourceCodePackage: "github.com/mygithub/myservice",
+      SourceCodeLambda:  "aws/lambda/example",
+      /* FunctionProps: optionally other awslambda.FunctionProps */
+    },
+  )
 
-// 2. declare api gateway
-const Gateway = (): api.RestApiProps =>
-  scud.Gateway({
-    restApiName: 'example',
-    /* optionally other api.RestApiProps */
-  })
+  // 2. declare api gateway
+  gateway := scud.NewGateway(stack, jsii.String("Gateway"))
 
-// 3. assembles RESTful api service from gateway and lambda functions
-const service = scud.mkService(Gateway)
-  .addResource('hello', scud.aws.Lambda(MyFun))
+  // 3. assembles RESTful api service from gateway and lambda functions
+  gateway.AddResource("hello", myfun)
+}
 
 // 4. injects the service to stack
-const stack = new cdk.Stack(/* ... */)
-pure.join(stack, service)
+stack := awscdk.NewStack(/* ... */)
+NewService(stack)
 ```
 
 Please see the RESTful API templates, clone them to draft a new microservice in matter of minutes:
@@ -70,9 +76,9 @@ Please see the RESTful API templates, clone them to draft a new microservice in 
 
 Supply custom domain name and ARN of Certificate
 
-```ts
-const service = scud.mkService(Gateway)
-  .configRoute53('test.example.com', 'arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000')
+```go
+scud.NewGateway(stack, jsii.String("Gateway")).
+  ConfigRoute53("test.example.com", "arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000")
 ```
 
 
@@ -80,10 +86,10 @@ const service = scud.mkService(Gateway)
 
 The construct supports integration with AWS Cognito, the integration of AWS API Gateway and AWS Cognito is well depicted by [official documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html). The pattern enables deployment of this configuration, just supply ARN of user pool and supply scopes to protect endpoints 
 
-```ts
-const service = scud.mkService(Gateway)
-  .configOAuth2([ "arn:aws:cognito-idp:..." ])
-  .addResource('hello', scud.aws.Lambda(MyFun), ["my/scope"])
+```go
+scud.NewGateway(stack, jsii.String("Gateway")).
+  ConfigAuthorizer("arn:aws:cognito-idp:...").
+	AddResource("hello", myfun, "my/scope")
 ```
 
 ## HowTo Contribute
@@ -100,10 +106,8 @@ The project is [MIT](https://github.com/fogfish/scud/blob/master/LICENSE) licens
 git clone https://github.com/fogfish/scud
 cd scud
 
-npm install
-npm run build
-npm run test
-npm run lint
+go build
+go test
 ```
 
 ## License
