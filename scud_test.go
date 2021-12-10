@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/fogfish/scud"
 )
@@ -39,6 +40,37 @@ func TestFunctionGo(t *testing.T) {
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
+}
+
+func TestFunctionGoWithProps(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodePackage: "github.com/fogfish/scud",
+			SourceCodeLambda:  "test/lambda/go",
+			FunctionProps: &awslambda.FunctionProps{
+				FunctionName: jsii.String("test"),
+			},
+		},
+	)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
+		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+	template.HasResourceProperties(jsii.String("AWS::Lambda::Function"),
+		map[string]interface{}{
+			"FunctionName": "test",
+		},
+	)
 }
 
 func TestCreateGateway(t *testing.T) {

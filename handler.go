@@ -33,24 +33,27 @@ type FunctionGoProps struct {
 
 NewFunctionGo creates Golang Lambda Function from "inline" code
 */
-func NewFunctionGo(scope constructs.Construct, id *string, props *FunctionGoProps) awslambda.Function {
-	var lprops awslambda.FunctionProps
-	if props.FunctionProps != nil {
-		lprops = *props.FunctionProps
+func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps) awslambda.Function {
+	var props awslambda.FunctionProps
+	if spec.FunctionProps != nil {
+		props = *spec.FunctionProps
 	}
 
-	if lprops.Timeout == nil {
-		lprops.Timeout = awscdk.Duration_Minutes(jsii.Number(1))
+	if props.Timeout == nil {
+		props.Timeout = awscdk.Duration_Minutes(jsii.Number(1))
 	}
 
-	if lprops.LogRetention == "" {
-		lprops.LogRetention = awslogs.RetentionDays_FIVE_DAYS
+	if props.LogRetention == "" {
+		props.LogRetention = awslogs.RetentionDays_FIVE_DAYS
 	}
 
-	lprops.Code = AssetCodeGo(props.SourceCodePackage, props.SourceCodeLambda)
-	lprops.Handler = jsii.String("main")
-	lprops.Runtime = awslambda.Runtime_GO_1_X()
-	lprops.FunctionName = jsii.String(fmt.Sprintf("%s%s", *awscdk.Aws_STACK_ID(), filepath.Base(props.SourceCodeLambda)))
+	if props.FunctionName == nil {
+		props.FunctionName = jsii.String(fmt.Sprintf("%s%s", *awscdk.Aws_STACK_ID(), filepath.Base(spec.SourceCodeLambda)))
+	}
 
-	return awslambda.NewFunction(scope, id, &lprops)
+	props.Code = AssetCodeGo(spec.SourceCodePackage, spec.SourceCodeLambda)
+	props.Handler = jsii.String("main")
+	props.Runtime = awslambda.Runtime_GO_1_X()
+
+	return awslambda.NewFunction(scope, id, &props)
 }
