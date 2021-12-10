@@ -13,6 +13,8 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/fogfish/scud"
 )
@@ -40,11 +42,46 @@ func TestFunctionGo(t *testing.T) {
 	}
 }
 
+func TestFunctionGoWithProps(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodePackage: "github.com/fogfish/scud",
+			SourceCodeLambda:  "test/lambda/go",
+			FunctionProps: &awslambda.FunctionProps{
+				FunctionName: jsii.String("test"),
+			},
+		},
+	)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
+		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+	template.HasResourceProperties(jsii.String("AWS::Lambda::Function"),
+		map[string]interface{}{
+			"FunctionName": "test",
+		},
+	)
+}
+
 func TestCreateGateway(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
 
-	scud.NewGateway(stack, jsii.String("GW"))
+	scud.NewGateway(stack, jsii.String("GW"),
+		&awsapigateway.RestApiProps{
+			RestApiName: jsii.String("test"),
+		},
+	)
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGateway::RestApi"):    jsii.Number(1),
@@ -57,6 +94,11 @@ func TestCreateGateway(t *testing.T) {
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
+	template.HasResourceProperties(jsii.String("AWS::ApiGateway::RestApi"),
+		map[string]interface{}{
+			"Name": "test",
+		},
+	)
 }
 
 func TestAddResource(t *testing.T) {
@@ -70,7 +112,7 @@ func TestAddResource(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW")).
+	scud.NewGateway(stack, jsii.String("GW"), nil).
 		AddResource("test", f)
 
 	require := map[*string]*float64{
@@ -100,7 +142,7 @@ func TestConfigAuthorizer(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW")).
+	scud.NewGateway(stack, jsii.String("GW"), nil).
 		ConfigAuthorizer("arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX").
 		AddResource("test", f, "test")
 
@@ -125,7 +167,7 @@ func TestConfigRoute53(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW")).
+	scud.NewGateway(stack, jsii.String("GW"), nil).
 		ConfigRoute53("test.example.com", "arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000")
 
 	require := map[*string]*float64{

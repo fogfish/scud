@@ -46,28 +46,29 @@ type gateway struct {
 
 NewGateway creates new instance of Gateway
 */
-func NewGateway(scope constructs.Construct, id *string) Gateway {
+func NewGateway(scope constructs.Construct, id *string, props *awsapigateway.RestApiProps) Gateway {
 	gw := &gateway{Construct: constructs.NewConstruct(scope, id)}
-	return gw.mkGateway()
+	return gw.mkGateway(props)
 }
 
-func (gw *gateway) mkGateway() Gateway {
-	id := jsii.String("Gateway")
-	gw.restapi = awsapigateway.NewRestApi(gw.Construct, id,
-		&awsapigateway.RestApiProps{
-			Deploy: jsii.Bool(true),
-			DeployOptions: &awsapigateway.StageOptions{
-				StageName: jsii.String("api"),
-			},
-			EndpointTypes:  &[]awsapigateway.EndpointType{awsapigateway.EndpointType_REGIONAL},
-			FailOnWarnings: jsii.Bool(true),
+func (gw *gateway) mkGateway(spec *awsapigateway.RestApiProps) Gateway {
+	var props awsapigateway.RestApiProps
+	if spec != nil {
+		props = *spec
+	}
 
-			DefaultCorsPreflightOptions: &awsapigateway.CorsOptions{
-				AllowOrigins: awsapigateway.Cors_ALL_ORIGINS(),
-				MaxAge:       awscdk.Duration_Minutes(jsii.Number(10)),
-			},
-		},
-	)
+	props.Deploy = jsii.Bool(true)
+	props.DeployOptions = &awsapigateway.StageOptions{
+		StageName: jsii.String("api"),
+	}
+	props.EndpointTypes = &[]awsapigateway.EndpointType{awsapigateway.EndpointType_REGIONAL}
+	props.FailOnWarnings = jsii.Bool(true)
+	props.DefaultCorsPreflightOptions = &awsapigateway.CorsOptions{
+		AllowOrigins: awsapigateway.Cors_ALL_ORIGINS(),
+		MaxAge:       awscdk.Duration_Minutes(jsii.Number(10)),
+	}
+
+	gw.restapi = awsapigateway.NewRestApi(gw.Construct, jsii.String("Gateway"), &props)
 
 	return gw
 }
