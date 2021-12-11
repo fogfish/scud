@@ -48,7 +48,8 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 	}
 
 	if props.FunctionName == nil {
-		props.FunctionName = jsii.String(fmt.Sprintf("%s%s", *awscdk.Aws_STACK_ID(), filepath.Base(spec.SourceCodeLambda)))
+		props.FunctionName = jsii.String(fmt.Sprintf("%s-%s",
+			*awscdk.Aws_STACK_NAME(), filepath.Base(filepath.Join(spec.SourceCodePackage, spec.SourceCodeLambda))))
 	}
 
 	props.Code = AssetCodeGo(spec.SourceCodePackage, spec.SourceCodeLambda)
