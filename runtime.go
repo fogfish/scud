@@ -51,6 +51,7 @@ func (g gocc) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *boo
 	cmd.Env = make([]string, 0)
 
 	cmd.Env = append(cmd.Env,
+		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 		fmt.Sprintf("GOPATH=%s", os.Getenv("GOPATH")),
 		fmt.Sprintf("GOROOT=%s", os.Getenv("GOROOT")),
 		fmt.Sprintf("GOCACHE=%s", "/tmp/go.amd64"),
