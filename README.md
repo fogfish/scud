@@ -39,12 +39,12 @@ import "github.com/fogfish/scud"
 ### Example RESTful API 
 
 ```go
-import "github.com/fogfish/scud"
-
-import * as api from '@aws-cdk/aws-apigateway'
-import * as lambda from '@aws-cdk/aws-lambda'
-import * as scud from 'scud'
-import * as pure from 'aws-cdk-pure'
+import (
+  "github.com/aws/aws-cdk-go/awscdk/v2"
+  "github.com/aws/constructs-go/constructs/v10"
+  "github.com/aws/jsii-runtime-go"
+  "github.com/fogfish/scud"
+)
 
 func NewService(scope constructs.Construct) {
   // 1. declare lambda function
