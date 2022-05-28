@@ -29,6 +29,7 @@ import (
 Gateway is RESTful API Gateway Construct pattern
 */
 type Gateway interface {
+	constructs.Construct
 	ConfigRoute53(host string, tlsArn string) Gateway
 	ConfigAuthorizer(cognitoUserPools ...string) Gateway
 	AddResource(resourceRootPath string, resourceHandler awslambda.Function, requiredAccessScope ...string) Gateway
