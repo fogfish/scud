@@ -9,11 +9,16 @@
 package scud
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"hash"
+	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
@@ -29,13 +34,77 @@ func AssetCodeGo(sourceCodePackage, sourceCodeLambda string) awslambda.Code {
 	return awslambda.NewAssetCode(
 		jsii.String(sourceCodeLambda),
 		&awss3assets.AssetOptions{
-			AssetHashType: awscdk.AssetHashType_OUTPUT,
+			AssetHashType: awscdk.AssetHashType_CUSTOM,
+			AssetHash:     jsii.String(hashpkg(sourceCodePackage, sourceCodeLambda)),
 			Bundling: &awscdk.BundlingOptions{
 				Image: awscdk.DockerImage_FromRegistry(jsii.String("golang")),
 				Local: &gocc{filepath.Join(sourceCodePackage, sourceCodeLambda)},
 				// Note: it make no sense to build Golang code inside container
 			},
 		})
+}
+
+func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
+	hash := sha256.New()
+	_, err := hash.Write([]byte(fmt.Sprintf("package: %s %s", sourceCodePackage, sourceCodeLambda)))
+	if err != nil {
+		panic(err)
+	}
+
+	exp, err := regexp.Compile("(.*\\.go$)|(.*\\.(mod|sum)$)")
+	if err != nil {
+		panic(err)
+	}
+
+	sourceCode := os.Getenv("GITHUB_WORKSPACE")
+	if sourceCode == "" {
+		sourceCode = filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage)
+	}
+
+	err = filepath.Walk(
+		sourceCode,
+		func(path string, info fs.FileInfo, err error) error {
+			if exp.MatchString(path) {
+				if err := hashfile(hash, path); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	v := hash.Sum(nil)
+	log.Printf("==> %s %x\n", filepath.Join(sourceCodePackage, sourceCodeLambda), v)
+	return fmt.Sprintf("%x", v)
+}
+
+func hashfile(hash hash.Hash, file string) error {
+	f, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = hash.Write([]byte(fmt.Sprintf("<file name=%s}>", file)))
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(hash, f)
+	if err != nil {
+		return err
+	}
+
+	_, err = hash.Write([]byte("</file>"))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type gocc struct {
