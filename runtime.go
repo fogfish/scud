@@ -65,7 +65,6 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 		sourceCode,
 		func(path string, info fs.FileInfo, err error) error {
 			if exp.MatchString(path) {
-				log.Printf("==> debug %s\n", path)
 				if err := hashfile(hash, path); err != nil {
 					return err
 				}
