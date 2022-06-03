@@ -73,6 +73,31 @@ func TestFunctionGoWithProps(t *testing.T) {
 	)
 }
 
+func TestFunctionGoMany(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodePackage: "github.com/fogfish/scud",
+			SourceCodeLambda:  "test/lambda/go",
+			FunctionProps: &awslambda.FunctionProps{
+				FunctionName: jsii.String("test"),
+			},
+		},
+	)
+
+	scud.NewFunctionGo(stack, jsii.String("another"),
+		&scud.FunctionGoProps{
+			SourceCodePackage: "github.com/fogfish/scud",
+			SourceCodeLambda:  "test/lambda/another",
+			FunctionProps: &awslambda.FunctionProps{
+				FunctionName: jsii.String("another"),
+			},
+		},
+	)
+}
+
 func TestCreateGateway(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
