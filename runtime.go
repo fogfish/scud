@@ -58,9 +58,16 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 
 	log.Printf("==> debug %s\n", filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage))
 	err = filepath.Walk(
-		filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage),
+		os.Getenv("GOPATH"),
 		func(path string, info fs.FileInfo, err error) error {
 			log.Printf("==> %s\n", path)
+			return nil
+		},
+	)
+
+	err = filepath.Walk(
+		filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage),
+		func(path string, info fs.FileInfo, err error) error {
 			if exp.MatchString(path) {
 				if err := hashfile(hash, path); err != nil {
 					return err
