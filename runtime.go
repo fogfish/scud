@@ -56,14 +56,15 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 		panic(err)
 	}
 
-	log.Printf("==> debug %s\n", filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage))
-	err = filepath.Walk(
-		sourceCodePackage,
-		func(path string, info fs.FileInfo, err error) error {
-			log.Printf("==> %s\n", path)
-			return nil
-		},
-	)
+	log.Printf("==> debug %s\n", os.Getenv("GITHUB_WORKSPACE"))
+	// filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage))
+	// err = filepath.Walk(
+	// 	sourceCodePackage,
+	// 	func(path string, info fs.FileInfo, err error) error {
+	// 		log.Printf("==> %s\n", path)
+	// 		return nil
+	// 	},
+	// )
 
 	err = filepath.Walk(
 		filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage),

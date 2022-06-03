@@ -10,17 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - name: golang
-        uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
-          go-version: 1.17
+          go-version-file: 'go.mod'
 
-      - name: checkout
-        uses: actions/checkout@v2
+      # - name: golang
+      #   uses: actions/setup-go@v2
+      #   with:
+      #     go-version: 1.17
+
  
-      - name: go get tools
-        run: |
-          go get golang.org/x/lint/golint
+      # - name: go get tools
+      #   run: |
+      #     go get golang.org/x/lint/golint
     
       - name: go build
         run: |
@@ -30,9 +33,9 @@ jobs:
         run: |
           go vet ./...
   
-      - name: golint
-        run: |
-          golint ./...
+      # - name: golint
+      #   run: |
+      #     golint ./...
 
       - name: go test
         run: |
