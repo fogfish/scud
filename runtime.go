@@ -56,6 +56,7 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 		panic(err)
 	}
 
+	log.Printf("==> debug %s\n", filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage))
 	err = filepath.Walk(
 		filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage),
 		func(path string, info fs.FileInfo, err error) error {
