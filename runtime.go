@@ -27,7 +27,7 @@ AssetCodeGo bundles lambda function from source code
 */
 func AssetCodeGo(sourceCodePackage, sourceCodeLambda string) awslambda.Code {
 	return awslambda.NewAssetCode(
-		jsii.String(""),
+		jsii.String(sourceCodeLambda),
 		&awss3assets.AssetOptions{
 			AssetHashType: awscdk.AssetHashType_OUTPUT,
 			Bundling: &awscdk.BundlingOptions{
