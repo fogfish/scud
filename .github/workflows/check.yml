@@ -37,8 +37,9 @@ jobs:
       - name: go test
         run: |
           go test -v -coverprofile=profile.cov ./...
-        # env:
-        #   GOPATH: /home/runner/work/scud/go
+        env:
+          ## Note: GOPATH mandatory otherwise CDK fails to build lambda
+          GOPATH: /home/runner/work/scud/go
 
       - uses: shogo82148/actions-goveralls@v1
         with:

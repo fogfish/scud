@@ -60,8 +60,11 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 	err = filepath.Walk(
 		filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage),
 		func(path string, info fs.FileInfo, err error) error {
+			log.Printf("==> %s\n", path)
 			if exp.MatchString(path) {
-				hashfile(hash, path)
+				if err := hashfile(hash, path); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
