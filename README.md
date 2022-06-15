@@ -61,6 +61,8 @@ func NewService(scope constructs.Construct) {
 
   // 3. assembles RESTful api service from gateway and lambda functions
   gateway.AddResource("hello", myfun)
+  gateway.AddResource("world/europe", myfun)
+  gateway.AddResource("world/asia", myfun)
 }
 
 // 4. injects the service to stack

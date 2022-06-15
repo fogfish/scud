@@ -153,7 +153,36 @@ func TestAddResource(t *testing.T) {
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
+}
 
+func TestAddResourceDepthPath(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	f := scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodePackage: "github.com/fogfish/scud",
+			SourceCodeLambda:  "test/lambda/go",
+		},
+	)
+
+	scud.NewGateway(stack, jsii.String("GW"), nil).
+		AddResource("test/1", f).
+		AddResource("test/2", f)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::ApiGateway::RestApi"):    jsii.Number(1),
+		jsii.String("AWS::ApiGateway::Deployment"): jsii.Number(1),
+		jsii.String("AWS::ApiGateway::Stage"):      jsii.Number(1),
+		jsii.String("AWS::ApiGateway::Method"):     jsii.Number(10),
+		jsii.String("AWS::ApiGateway::Resource"):   jsii.Number(5),
+		jsii.String("AWS::Lambda::Function"):       jsii.Number(2),
+	}
+
+	template := assertions.Template_FromStack(stack)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
 }
 
 func TestConfigAuthorizer(t *testing.T) {

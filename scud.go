@@ -10,6 +10,7 @@ package scud
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -170,7 +171,23 @@ func (gw *gateway) AddResource(
 		opts.Authorizer = gw.authorizer
 	}
 
-	rsc := gw.restapi.Root().AddResource(jsii.String(endpoint), nil)
+	node := gw.restapi.Root()
+	segments, segment := filepath.Split(endpoint)
+
+	if segments != "" {
+		for _, seg := range strings.Split(segments, "/") {
+			if seg != "" {
+				x := node.GetResource(jsii.String(seg))
+				if x != nil {
+					node = x
+				} else {
+					node = node.AddResource(jsii.String(seg), nil)
+				}
+			}
+		}
+	}
+
+	rsc := node.AddResource(jsii.String(segment), nil)
 	rsc.AddMethod(jsii.String("ANY"), lambda, opts)
 
 	sub := rsc.AddResource(jsii.String("{any+}"), nil)
