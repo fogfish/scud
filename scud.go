@@ -147,7 +147,7 @@ func (gw *gateway) ConfigAuthorizer(cognitoUserPools ...string) Gateway {
 }
 
 func (gw *gateway) ConfigAuthorizerFromUserPool(cognitoUserPools ...awscognito.IUserPool) Gateway {
-	gw.authorizer = awsapigateway.NewCognitoUserPoolsAuthorizer(gw.Construct, jsii.String("Auth"),
+	gw.authorizer = awsapigateway.NewCognitoUserPoolsAuthorizer(gw.restapi, jsii.String("Auth"),
 		&awsapigateway.CognitoUserPoolsAuthorizerProps{
 			CognitoUserPools: &cognitoUserPools,
 			IdentitySource:   jsii.String("method.request.header.Authorization"),
