@@ -51,7 +51,7 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 		panic(err)
 	}
 
-	exp, err := regexp.Compile("(.*\\.go$)|(.*\\.(mod|sum)$)")
+	exp, err := regexp.Compile(`(.*\.go$)|(.*\.(mod|sum)$)`)
 	if err != nil {
 		panic(err)
 	}

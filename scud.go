@@ -33,6 +33,7 @@ type Gateway interface {
 	constructs.Construct
 	ConfigRoute53(host string, tlsArn string) Gateway
 	ConfigAuthorizer(cognitoUserPools ...string) Gateway
+	ConfigAuthorizerFromUserPool(cognitoUserPools ...awscognito.IUserPool) Gateway
 	AddResource(resourceRootPath string, resourceHandler awslambda.Function, requiredAccessScope ...string) Gateway
 }
 
@@ -140,9 +141,15 @@ func (gw *gateway) ConfigAuthorizer(cognitoUserPools ...string) Gateway {
 		)
 	}
 
+	gw.ConfigAuthorizerFromUserPool(pools...)
+
+	return gw
+}
+
+func (gw *gateway) ConfigAuthorizerFromUserPool(cognitoUserPools ...awscognito.IUserPool) Gateway {
 	gw.authorizer = awsapigateway.NewCognitoUserPoolsAuthorizer(gw.Construct, jsii.String("Auth"),
 		&awsapigateway.CognitoUserPoolsAuthorizerProps{
-			CognitoUserPools: &pools,
+			CognitoUserPools: &cognitoUserPools,
 			IdentitySource:   jsii.String("method.request.header.Authorization"),
 		},
 	)
