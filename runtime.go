@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
@@ -45,6 +46,7 @@ func AssetCodeGo(sourceCodePackage, sourceCodeLambda string) awslambda.Code {
 }
 
 func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
+	t := time.Now()
 	hash := sha256.New()
 	_, err := hash.Write([]byte(fmt.Sprintf("package: %s %s", sourceCodePackage, sourceCodeLambda)))
 	if err != nil {
@@ -78,7 +80,8 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 	}
 
 	v := hash.Sum(nil)
-	log.Printf("==> %s %x\n", filepath.Join(sourceCodePackage, sourceCodeLambda), v)
+	d := time.Now().Sub(t)
+	log.Printf("==> checksum %s %x (%v)\n", filepath.Join(sourceCodePackage, sourceCodeLambda), v[:4], d)
 	return fmt.Sprintf("%x", v)
 }
 
@@ -112,7 +115,7 @@ type gocc struct {
 }
 
 func (g gocc) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *bool {
-	log.Printf("==> go build %s\n", g.sourceCode)
+	t := time.Now()
 
 	cmd := exec.Command("go", "build", "-o", filepath.Join(*outputDir, "main"), filepath.Join(g.sourceCode))
 	cmd.Stdout = os.Stdout
@@ -133,6 +136,8 @@ func (g gocc) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *boo
 		return jsii.Bool(false)
 	}
 
+	d := time.Now().Sub(t)
+	log.Printf("==> go build %s (%v)\n", g.sourceCode, d)
 	return jsii.Bool(true)
 }
 
