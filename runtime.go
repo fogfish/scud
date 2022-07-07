@@ -126,6 +126,7 @@ func (g gocc) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *boo
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 		fmt.Sprintf("GOPATH=%s", os.Getenv("GOPATH")),
 		fmt.Sprintf("GOROOT=%s", os.Getenv("GOROOT")),
+		fmt.Sprintf("GOMODCACHE=%s", os.Getenv("GOMODCACHE")),
 		fmt.Sprintf("GOCACHE=%s", g.goCache()),
 		fmt.Sprintf("GOOS=%s", "linux"),
 		fmt.Sprintf("GOARCH=%s", "amd64"),
