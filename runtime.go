@@ -80,7 +80,7 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 	}
 
 	v := hash.Sum(nil)
-	d := time.Now().Sub(t)
+	d := time.Since(t)
 	log.Printf("==> checksum %s %x (%v)\n", filepath.Join(sourceCodePackage, sourceCodeLambda), v[:4], d)
 	return fmt.Sprintf("%x", v)
 }
@@ -136,17 +136,16 @@ func (g gocc) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *boo
 		return jsii.Bool(false)
 	}
 
-	d := time.Now().Sub(t)
+	d := time.Since(t)
 	log.Printf("==> go build %s (%v)\n", g.sourceCode, d)
 	return jsii.Bool(true)
 }
 
 func (g gocc) goCache() string {
-	goarch := os.Getenv("GOARCH")
-	goos := os.Getenv("GOOS")
+	gha := os.Getenv("GITHUB_ACTION")
 	gocache := os.Getenv("GOCACHE")
 
-	if goos == "linux" && goarch == "amd64" && gocache != "" {
+	if gha != "" && gocache != "" {
 		return gocache
 	}
 
