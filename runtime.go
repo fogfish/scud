@@ -123,7 +123,7 @@ func (g gocc) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *boo
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 		fmt.Sprintf("GOPATH=%s", os.Getenv("GOPATH")),
 		fmt.Sprintf("GOROOT=%s", os.Getenv("GOROOT")),
-		fmt.Sprintf("GOCACHE=%s", "/tmp/go.amd64"),
+		fmt.Sprintf("GOCACHE=%s", g.goCache()),
 		fmt.Sprintf("GOOS=%s", "linux"),
 		fmt.Sprintf("GOARCH=%s", "amd64"),
 	)
@@ -134,4 +134,16 @@ func (g gocc) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *boo
 	}
 
 	return jsii.Bool(true)
+}
+
+func (g gocc) goCache() string {
+	goarch := os.Getenv("GOARCH")
+	goos := os.Getenv("GOOS")
+	gocache := os.Getenv("GOCACHE")
+
+	if goos == "linux" && goarch == "amd64" && gocache != "" {
+		return gocache
+	}
+
+	return "/tmp/go.amd64"
 }
