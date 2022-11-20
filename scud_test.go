@@ -36,7 +36,7 @@ func TestFunctionGo(t *testing.T) {
 		jsii.String("Custom::LogRetention"):  jsii.Number(1),
 	}
 
-	template := assertions.Template_FromStack(stack)
+	template := assertions.Template_FromStack(stack, nil)
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
@@ -62,7 +62,7 @@ func TestFunctionGoWithProps(t *testing.T) {
 		jsii.String("Custom::LogRetention"):  jsii.Number(1),
 	}
 
-	template := assertions.Template_FromStack(stack)
+	template := assertions.Template_FromStack(stack, nil)
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
@@ -115,7 +115,7 @@ func TestCreateGateway(t *testing.T) {
 		jsii.String("AWS::ApiGateway::Method"):     jsii.Number(1),
 	}
 
-	template := assertions.Template_FromStack(stack)
+	template := assertions.Template_FromStack(stack, nil)
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
@@ -149,7 +149,7 @@ func TestAddResource(t *testing.T) {
 		jsii.String("AWS::Lambda::Function"):       jsii.Number(2),
 	}
 
-	template := assertions.Template_FromStack(stack)
+	template := assertions.Template_FromStack(stack, nil)
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
@@ -179,7 +179,7 @@ func TestAddResourceDepthPath(t *testing.T) {
 		jsii.String("AWS::Lambda::Function"):       jsii.Number(2),
 	}
 
-	template := assertions.Template_FromStack(stack)
+	template := assertions.Template_FromStack(stack, nil)
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
@@ -204,7 +204,7 @@ func TestConfigAuthorizer(t *testing.T) {
 		jsii.String("AWS::ApiGateway::Authorizer"): jsii.Number(1),
 	}
 
-	template := assertions.Template_FromStack(stack)
+	template := assertions.Template_FromStack(stack, nil)
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
@@ -229,7 +229,7 @@ func TestConfigRoute53(t *testing.T) {
 		jsii.String("AWS::Route53::RecordSet"):     jsii.Number(1),
 	}
 
-	template := assertions.Template_FromStack(stack)
+	template := assertions.Template_FromStack(stack, nil)
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
