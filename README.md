@@ -74,6 +74,18 @@ Please see the RESTful API templates, clone them to draft a new microservice in 
 * [blueprint-serverless-golang](https://github.com/fogfish/blueprint-serverless-golang)
 
 
+### Example ARM64 functions
+
+```go
+myfun := scud.NewFunctionGo(scope, jsii.String("test"),
+    &scud.FunctionGoProps{
+      SourceCodePackage: "github.com/mygithub/myservice",
+      SourceCodeLambda:  "aws/lambda/example",
+      GoEnv: map[string]string{"GOARCH": "arm64"},
+    },
+  )
+```
+
 ### Example RESTful API with Domain Name
 
 Supply custom domain name and ARN of Certificate

@@ -16,7 +16,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"time"
@@ -27,19 +26,23 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-/*
+type Compiler interface {
+	awscdk.ILocalBundling
+	SourceCodePackage() string
+	SourceCodeLambda() string
+}
 
-AssetCodeGo bundles lambda function from source code
-*/
-func AssetCodeGo(sourceCodePackage, sourceCodeLambda string) awslambda.Code {
+// AssetCodeGo bundles lambda function from source code
+func AssetCodeGo(compiler Compiler) awslambda.Code {
+	hash := hashpkg(compiler.SourceCodePackage(), compiler.SourceCodeLambda())
 	return awslambda.NewAssetCode(
 		jsii.String(""),
 		&awss3assets.AssetOptions{
 			AssetHashType: awscdk.AssetHashType_CUSTOM,
-			AssetHash:     jsii.String(hashpkg(sourceCodePackage, sourceCodeLambda)),
+			AssetHash:     jsii.String(hash),
 			Bundling: &awscdk.BundlingOptions{
 				Image: awscdk.DockerImage_FromRegistry(jsii.String("golang")),
-				Local: &gocc{filepath.Join(sourceCodePackage, sourceCodeLambda)},
+				Local: compiler.(awscdk.ILocalBundling),
 				// Note: it make no sense to build Golang code inside container
 			},
 		})
@@ -108,47 +111,4 @@ func hashfile(hash hash.Hash, file string) error {
 	}
 
 	return nil
-}
-
-type gocc struct {
-	sourceCode string
-}
-
-func (g gocc) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *bool {
-	t := time.Now()
-
-	cmd := exec.Command("go", "build", "-o", filepath.Join(*outputDir, "main"), filepath.Join(g.sourceCode))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = make([]string, 0)
-
-	cmd.Env = append(cmd.Env,
-		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
-		fmt.Sprintf("GOPATH=%s", os.Getenv("GOPATH")),
-		fmt.Sprintf("GOROOT=%s", os.Getenv("GOROOT")),
-		fmt.Sprintf("GOMODCACHE=%s", os.Getenv("GOMODCACHE")),
-		fmt.Sprintf("GOCACHE=%s", g.goCache()),
-		fmt.Sprintf("GOOS=%s", "linux"),
-		fmt.Sprintf("GOARCH=%s", "amd64"),
-	)
-
-	if err := cmd.Run(); err != nil {
-		log.Printf("%s", err)
-		return jsii.Bool(false)
-	}
-
-	d := time.Since(t)
-	log.Printf("==> go build %s (%v)\n", g.sourceCode, d)
-	return jsii.Bool(true)
-}
-
-func (g gocc) goCache() string {
-	gha := os.Getenv("GITHUB_ACTION")
-	gocache := os.Getenv("GOCACHE")
-
-	if gha != "" && gocache != "" {
-		return gocache
-	}
-
-	return "/tmp/go.amd64"
 }

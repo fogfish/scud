@@ -42,6 +42,44 @@ func TestFunctionGo(t *testing.T) {
 	}
 }
 
+func TestFunctionGoArch(t *testing.T) {
+	for arch, config := range map[string]string{
+		"arm64": "arm64",
+		"amd64": "x86_64",
+	} {
+
+		app := awscdk.NewApp(nil)
+		stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+		scud.NewFunctionGo(stack, jsii.String("test"),
+			&scud.FunctionGoProps{
+				SourceCodePackage: "github.com/fogfish/scud",
+				SourceCodeLambda:  "test/lambda/go",
+				GoEnv: map[string]string{
+					"GOARCH": arch,
+				},
+			},
+		)
+
+		require := map[*string]*float64{
+			jsii.String("AWS::IAM::Role"):        jsii.Number(2),
+			jsii.String("AWS::Lambda::Function"): jsii.Number(2),
+			jsii.String("Custom::LogRetention"):  jsii.Number(1),
+		}
+
+		template := assertions.Template_FromStack(stack, nil)
+		for key, val := range require {
+			template.ResourceCountIs(key, val)
+		}
+
+		template.HasResourceProperties(jsii.String("AWS::Lambda::Function"),
+			map[string]any{
+				"Architectures": []string{config},
+			},
+		)
+	}
+}
+
 func TestFunctionGoWithProps(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)

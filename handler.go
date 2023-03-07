@@ -19,20 +19,15 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-/*
-
-FunctionGoProps is properties of the function
-*/
+// FunctionGoProps is properties of the function
 type FunctionGoProps struct {
 	*awslambda.FunctionProps
 	SourceCodePackage string
 	SourceCodeLambda  string
+	GoEnv             map[string]string
 }
 
-/*
-
-NewFunctionGo creates Golang Lambda Function from "inline" code
-*/
+// NewFunctionGo creates Golang Lambda Function from "inline" code
 func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps) awslambda.Function {
 	var props awslambda.FunctionProps
 	if spec.FunctionProps != nil {
@@ -52,7 +47,17 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 			*awscdk.Aws_STACK_NAME(), filepath.Base(filepath.Join(spec.SourceCodePackage, spec.SourceCodeLambda))))
 	}
 
-	props.Code = AssetCodeGo(spec.SourceCodePackage, spec.SourceCodeLambda)
+	if spec.GoEnv != nil {
+		switch spec.GoEnv["GOARCH"] {
+		case "amd64":
+			props.Architecture = awslambda.Architecture_X86_64()
+		case "arm64":
+			props.Architecture = awslambda.Architecture_ARM_64()
+		}
+	}
+
+	gocc := NewGoCompiler(spec.SourceCodePackage, spec.SourceCodeLambda, spec.GoEnv)
+	props.Code = AssetCodeGo(gocc)
 	props.Handler = jsii.String("main")
 	props.Runtime = awslambda.Runtime_GO_1_X()
 
