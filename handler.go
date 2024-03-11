@@ -47,6 +47,8 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 			*awscdk.Aws_STACK_NAME(), filepath.Base(filepath.Join(spec.SourceCodePackage, spec.SourceCodeLambda))))
 	}
 
+	// arm64 is default deployment
+	props.Architecture = awslambda.Architecture_ARM_64()
 	if spec.GoEnv != nil {
 		switch spec.GoEnv["GOARCH"] {
 		case "amd64":
@@ -58,8 +60,8 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 
 	gocc := NewGoCompiler(spec.SourceCodePackage, spec.SourceCodeLambda, spec.GoEnv)
 	props.Code = AssetCodeGo(gocc)
-	props.Handler = jsii.String("main")
-	props.Runtime = awslambda.Runtime_GO_1_X()
+	props.Handler = jsii.String(goBinary)
+	props.Runtime = awslambda.Runtime_PROVIDED_AL2()
 
 	return awslambda.NewFunction(scope, id, &props)
 }

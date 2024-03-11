@@ -18,6 +18,8 @@ type GoCompiler struct {
 	env               map[string]string
 }
 
+const goBinary = "bootstrap"
+
 func NewGoCompiler(
 	sourceCodePackage string,
 	sourceCodeLambda string,
@@ -41,7 +43,7 @@ func (g *GoCompiler) SourceCodeLambda() string  { return g.sourceCodeLambda }
 func (g *GoCompiler) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *bool {
 	t := time.Now()
 
-	cmd := exec.Command("go", "build", "-o", filepath.Join(*outputDir, "main"), filepath.Join(g.sourceCode))
+	cmd := exec.Command("go", "build", "-tags", "lambda.norpc", "-o", filepath.Join(*outputDir, goBinary), filepath.Join(g.sourceCode))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = g.cmdEnv()
@@ -81,7 +83,7 @@ func (g *GoCompiler) cmdEnv() []string {
 
 	for envvar, defval := range map[string]string{
 		"GOOS":        "linux",
-		"GOARCH":      "amd64",
+		"GOARCH":      "arm64",
 		"CGO_ENABLED": "0",
 	} {
 		if _, exists := g.env[envvar]; !exists {
