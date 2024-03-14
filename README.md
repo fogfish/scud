@@ -57,12 +57,14 @@ func NewService(scope constructs.Construct) {
   )
 
   // 2. declare api gateway
-  gateway := scud.NewGateway(stack, jsii.String("Gateway"))
+  gateway := scud.NewGateway(stack, jsii.String("Gateway"),
+    &scud.GatewayProps{}
+  )
 
   // 3. assembles RESTful api service from gateway and lambda functions
-  gateway.AddResource("hello", myfun)
-  gateway.AddResource("world/europe", myfun)
-  gateway.AddResource("world/asia", myfun)
+  gateway.AddResource("/hello", myfun)
+  gateway.AddResource("/world/europe", myfun)
+  gateway.AddResource("/world/asia", myfun)
 }
 
 // 4. injects the service to stack
@@ -91,8 +93,12 @@ myfun := scud.NewFunctionGo(scope, jsii.String("test"),
 Supply custom domain name and ARN of Certificate
 
 ```go
-scud.NewGateway(stack, jsii.String("Gateway")).
-  ConfigRoute53("test.example.com", "arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000")
+scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{
+    Host: jsii.String("test.example.com"),
+    TlsArn: jsii.String("arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000"),
+  },
+)
 ```
 
 
@@ -101,9 +107,27 @@ scud.NewGateway(stack, jsii.String("Gateway")).
 The construct supports integration with AWS Cognito, the integration of AWS API Gateway and AWS Cognito is well depicted by [official documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html). The pattern enables deployment of this configuration, just supply ARN of user pool and supply scopes to protect endpoints 
 
 ```go
-scud.NewGateway(stack, jsii.String("Gateway")).
-  ConfigAuthorizer("arn:aws:cognito-idp:...").
-	AddResource("hello", myfun, "my/scope")
+gw := scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{},
+)
+
+// Using AWS Cognito
+gw.WithAuthorizerCognito("arn:aws:cognito-idp:...").
+gw.AddResource("/hello", myfun, "my/scope")
+
+// Using AWS IAM
+gw.WithAuthorizerIAM().
+gw.AddResource("/hello", myfun)
+```
+
+You can still access API with curl even if IAM authorizer is used
+
+```bash
+curl https://example.com/petshop/pets \
+  -XGET \
+  -H "Accept: application/json" \
+  --aws-sigv4 "aws:amz:eu-west-1:execute-api" \
+  --user "$AWS_ACCESS_KEY_ID":"$AWS_SECRET_ACCESS_KEY"
 ```
 
 ## HowTo Contribute
