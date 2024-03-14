@@ -13,7 +13,7 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/fogfish/scud"
@@ -141,23 +141,23 @@ func TestCreateGateway(t *testing.T) {
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
 
 	scud.NewGateway(stack, jsii.String("GW"),
-		&awsapigateway.RestApiProps{
-			RestApiName: jsii.String("test"),
+		&scud.GatewayProps{
+			HttpApiProps: &awsapigatewayv2.HttpApiProps{
+				ApiName: jsii.String("test"),
+			},
 		},
 	)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::ApiGateway::RestApi"):    jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Deployment"): jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Stage"):      jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Method"):     jsii.Number(1),
+		jsii.String("AWS::ApiGatewayV2::Api"):   jsii.Number(1),
+		jsii.String("AWS::ApiGatewayV2::Stage"): jsii.Number(2),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
 	for key, val := range require {
 		template.ResourceCountIs(key, val)
 	}
-	template.HasResourceProperties(jsii.String("AWS::ApiGateway::RestApi"),
+	template.HasResourceProperties(jsii.String("AWS::ApiGatewayV2::Api"),
 		map[string]interface{}{
 			"Name": "test",
 		},
@@ -175,16 +175,14 @@ func TestAddResource(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW"), nil).
-		AddResource("test", f)
+	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
+	gw.AddResource("/test", f)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::ApiGateway::RestApi"):    jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Deployment"): jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Stage"):      jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Method"):     jsii.Number(5),
-		jsii.String("AWS::ApiGateway::Resource"):   jsii.Number(2),
-		jsii.String("AWS::Lambda::Function"):       jsii.Number(2),
+		jsii.String("AWS::ApiGatewayV2::Api"):         jsii.Number(1),
+		jsii.String("AWS::ApiGatewayV2::Stage"):       jsii.Number(2),
+		jsii.String("AWS::ApiGatewayV2::Route"):       jsii.Number(1),
+		jsii.String("AWS::ApiGatewayV2::Integration"): jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -204,17 +202,16 @@ func TestAddResourceDepthPath(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW"), nil).
-		AddResource("test/1", f).
-		AddResource("test/2", f)
+	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
+	gw.AddResource("/test/1", f)
+	gw.AddResource("/test/2", f)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::ApiGateway::RestApi"):    jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Deployment"): jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Stage"):      jsii.Number(1),
-		jsii.String("AWS::ApiGateway::Method"):     jsii.Number(10),
-		jsii.String("AWS::ApiGateway::Resource"):   jsii.Number(5),
-		jsii.String("AWS::Lambda::Function"):       jsii.Number(2),
+		jsii.String("AWS::ApiGatewayV2::Api"):         jsii.Number(1),
+		jsii.String("AWS::ApiGatewayV2::Stage"):       jsii.Number(2),
+		jsii.String("AWS::ApiGatewayV2::Route"):       jsii.Number(2),
+		jsii.String("AWS::ApiGatewayV2::Integration"): jsii.Number(2),
+		jsii.String("AWS::Lambda::Function"):          jsii.Number(2),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -223,7 +220,7 @@ func TestAddResourceDepthPath(t *testing.T) {
 	}
 }
 
-func TestConfigAuthorizer(t *testing.T) {
+func TestWithAuthorizerIAM(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
 
@@ -234,12 +231,37 @@ func TestConfigAuthorizer(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW"), nil).
-		ConfigAuthorizer("arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX").
-		AddResource("test", f, "test")
+	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
+	gw.WithAuthorizerIAM()
+	gw.AddResource("/test", f)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::ApiGateway::Authorizer"): jsii.Number(1),
+		jsii.String("AWS::ApiGatewayV2::Api"): jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
+func TestWithAuthorizerCognito(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	f := scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodePackage: "github.com/fogfish/scud",
+			SourceCodeLambda:  "test/lambda/go",
+		},
+	)
+
+	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
+	gw.WithAuthorizerCognito("arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX")
+	gw.AddResource("/test", f, "test")
+
+	require := map[*string]*float64{
+		jsii.String("AWS::ApiGatewayV2::Authorizer"): jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -259,12 +281,16 @@ func TestConfigRoute53(t *testing.T) {
 		},
 	)
 
-	scud.NewGateway(stack, jsii.String("GW"), nil).
-		ConfigRoute53("test.example.com", "arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000")
+	scud.NewGateway(stack, jsii.String("GW"),
+		&scud.GatewayProps{
+			Host:   jsii.String("test.example.com"),
+			TlsArn: jsii.String("arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000"),
+		},
+	)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::ApiGateway::DomainName"): jsii.Number(1),
-		jsii.String("AWS::Route53::RecordSet"):     jsii.Number(1),
+		jsii.String("AWS::ApiGatewayV2::DomainName"): jsii.Number(1),
+		jsii.String("AWS::Route53::RecordSet"):       jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)

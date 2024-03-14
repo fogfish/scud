@@ -9,12 +9,14 @@
 package scud
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
+	apigw2 "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
+	authorizers "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2authorizers"
+	integrations "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2integrations"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscognito"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
@@ -25,86 +27,82 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-/*
-
-Gateway is RESTful API Gateway Construct pattern
-*/
+// Gateway is RESTful API Gateway Construct pattern
 type Gateway interface {
 	constructs.Construct
-	ConfigRoute53(host string, tlsArn string) Gateway
-	ConfigAuthorizer(cognitoUserPools ...string) Gateway
-	AddResource(resourceRootPath string, resourceHandler awslambda.Function, requiredAccessScope ...string) Gateway
+	RestApi() apigw2.HttpApi
+	WithAuthorizerIAM()
+	WithAuthorizerCognito(cognitoArn string)
+	AddResource(resourceRootPath string, resourceHandler awslambda.Function, requiredAccessScope ...string)
+}
+
+type GatewayProps struct {
+	*apigw2.HttpApiProps
+	Host   *string
+	TlsArn *string
 }
 
 type gateway struct {
 	constructs.Construct
-	restapi    awsapigateway.RestApi
-	authorizer awsapigateway.IAuthorizer
-	x509       awscertificatemanager.ICertificate
-	aRecord    awsroute53.ARecord
+	restapi      apigw2.HttpApi
+	domain       apigw2.DomainName
+	authorizer   apigw2.IHttpRouteAuthorizer
+	enableScopes bool
+	aRecord      awsroute53.ARecord
 }
 
-/*
-
-NewGateway creates new instance of Gateway
-*/
-func NewGateway(scope constructs.Construct, id *string, props *awsapigateway.RestApiProps) Gateway {
+// NewGateway creates new instance of Gateway
+func NewGateway(scope constructs.Construct, id *string, props *GatewayProps) Gateway {
 	gw := &gateway{Construct: constructs.NewConstruct(scope, id)}
-	return gw.mkGateway(props)
-}
-
-func (gw *gateway) mkGateway(spec *awsapigateway.RestApiProps) Gateway {
-	var props awsapigateway.RestApiProps
-	if spec != nil {
-		props = *spec
+	if props.HttpApiProps == nil {
+		props.HttpApiProps = &apigw2.HttpApiProps{}
 	}
 
-	props.Deploy = jsii.Bool(true)
-	props.DeployOptions = &awsapigateway.StageOptions{
-		StageName: jsii.String("api"),
-	}
-	props.EndpointTypes = &[]awsapigateway.EndpointType{awsapigateway.EndpointType_REGIONAL}
-	props.FailOnWarnings = jsii.Bool(true)
-	props.DefaultCorsPreflightOptions = &awsapigateway.CorsOptions{
-		AllowOrigins: awsapigateway.Cors_ALL_ORIGINS(),
-		MaxAge:       awscdk.Duration_Minutes(jsii.Number(10)),
+	if props.HttpApiProps.ApiName == nil {
+		props.ApiName = awscdk.Aws_STACK_NAME()
 	}
 
-	gw.restapi = awsapigateway.NewRestApi(gw.Construct, jsii.String("Gateway"), &props)
+	if props.HttpApiProps.CorsPreflight == nil {
+		props.CorsPreflight = &apigw2.CorsPreflightOptions{
+			AllowOrigins: awsapigateway.Cors_ALL_ORIGINS(),
+			MaxAge:       awscdk.Duration_Minutes(jsii.Number(10)),
+		}
+	}
 
-	return gw
-}
+	if props.Host != nil && props.TlsArn != nil {
+		gw.domain = apigw2.NewDomainName(gw.Construct, jsii.String("DomainName"),
+			&apigw2.DomainNameProps{
+				EndpointType: apigw2.EndpointType_REGIONAL,
+				DomainName:   props.Host,
+				Certificate:  awscertificatemanager.Certificate_FromCertificateArn(gw.Construct, jsii.String("X509"), props.TlsArn),
+			},
+		)
 
-/*
+		props.HttpApiProps.DefaultDomainMapping = &apigw2.DomainMappingOptions{
+			DomainName: gw.domain,
+		}
+	}
 
-ConfigRoute53 deploys custom domain name for gateway
-*/
-func (gw *gateway) ConfigRoute53(host string, tlsArn string) Gateway {
-	return gw.
-		mkX509(tlsArn).
-		mkDomainName(host).
-		mkRoute53(host)
-}
+	gw.restapi = apigw2.NewHttpApi(gw.Construct, jsii.String("Gateway"), props.HttpApiProps)
 
-func (gw *gateway) mkX509(tlsArn string) *gateway {
-	id := jsii.String("X509")
-	gw.x509 = awscertificatemanager.Certificate_FromCertificateArn(gw.Construct, id, jsii.String(tlsArn))
-
-	return gw
-}
-
-func (gw *gateway) mkDomainName(host string) *gateway {
-	gw.restapi.AddDomainName(jsii.String("HostName"),
-		&awsapigateway.DomainNameOptions{
-			DomainName:  jsii.String(host),
-			Certificate: gw.x509,
+	apigw2.NewHttpStage(gw.Construct, jsii.String("Stage"),
+		&apigw2.HttpStageProps{
+			AutoDeploy: jsii.Bool(true),
+			StageName:  jsii.String("api"),
+			HttpApi:    gw.restapi,
 		},
 	)
 
+	if props.Host != nil && props.TlsArn != nil {
+		gw.createRoute53(*props.Host)
+	}
+
 	return gw
 }
 
-func (gw *gateway) mkRoute53(host string) *gateway {
+func (gw *gateway) RestApi() apigw2.HttpApi { return gw.restapi }
+
+func (gw *gateway) createRoute53(host string) *gateway {
 	domain := strings.Join(strings.Split(host, ".")[1:], ".")
 	zone := awsroute53.HostedZone_FromLookup(gw.Construct, jsii.String("HZone"),
 		&awsroute53.HostedZoneProviderProps{
@@ -115,83 +113,65 @@ func (gw *gateway) mkRoute53(host string) *gateway {
 	gw.aRecord = awsroute53.NewARecord(gw.Construct, jsii.String("ARecord"),
 		&awsroute53.ARecordProps{
 			RecordName: jsii.String(host),
-			Target:     awsroute53.NewRecordTarget(nil, awsroute53targets.NewApiGateway(gw.restapi)),
-			Ttl:        awscdk.Duration_Seconds(jsii.Number(60)),
-			Zone:       zone,
-		},
-	)
-
-	return gw
-}
-
-/*
-
-ConfigAuthorizer deploys AWS Cognito authorizer for gateway
-*/
-func (gw *gateway) ConfigAuthorizer(cognitoUserPools ...string) Gateway {
-	pools := make([]awscognito.IUserPool, 0)
-	for i, pool := range cognitoUserPools {
-		pools = append(pools,
-			awscognito.UserPool_FromUserPoolArn(
-				gw.Construct,
-				jsii.String(fmt.Sprintf("AuthPool%d", i)),
-				jsii.String(pool),
+			Target: awsroute53.RecordTarget_FromAlias(
+				awsroute53targets.NewApiGatewayv2DomainProperties(gw.domain.RegionalDomainName(), gw.domain.RegionalHostedZoneId()),
 			),
-		)
-	}
-
-	gw.authorizer = awsapigateway.NewCognitoUserPoolsAuthorizer(gw.restapi, jsii.String("Auth"),
-		&awsapigateway.CognitoUserPoolsAuthorizerProps{
-			CognitoUserPools: &pools,
-			IdentitySource:   jsii.String("method.request.header.Authorization"),
+			Ttl:  awscdk.Duration_Seconds(jsii.Number(60)),
+			Zone: zone,
 		},
 	)
 
 	return gw
 }
 
-/*
+// Enable IAM Authorizer
+func (gw *gateway) WithAuthorizerIAM() {
+	gw.enableScopes = false
+	gw.authorizer = authorizers.NewHttpIamAuthorizer()
+}
 
-AddResource creates a new handler to gateway
-*/
+// Enable AWS Cognito Authorizer
+func (gw *gateway) WithAuthorizerCognito(cognitoArn string) {
+	pool := awscognito.UserPool_FromUserPoolArn(
+		gw.Construct,
+		jsii.String("Cognito"),
+		jsii.String(cognitoArn),
+	)
+
+	gw.enableScopes = true
+	gw.authorizer = authorizers.NewHttpUserPoolAuthorizer(
+		jsii.String("Authorizer"),
+		pool,
+		&authorizers.HttpUserPoolAuthorizerProps{
+			IdentitySource: jsii.Strings("$request.header.Authorization"),
+		},
+	)
+}
+
+// Add resource
 func (gw *gateway) AddResource(
 	endpoint string,
 	handler awslambda.Function,
 	accessScope ...string,
-) Gateway {
-	lambda := awsapigateway.NewLambdaIntegration(handler, nil)
+) {
+	lambda := integrations.NewHttpLambdaIntegration(
+		jsii.String(filepath.Base(endpoint)),
+		handler,
+		&integrations.HttpLambdaIntegrationProps{
+			PayloadFormatVersion: apigw2.PayloadFormatVersion_VERSION_1_0(),
+		},
+	)
 
-	opts := &awsapigateway.MethodOptions{}
-	if gw.authorizer != nil && len(accessScope) > 0 {
-		opts.AuthorizationType = awsapigateway.AuthorizationType_COGNITO
-		opts.RequestParameters = &map[string]*bool{
-			"method.request.header.Authorization": jsii.Bool(true),
-		}
-		opts.AuthorizationScopes = jsii.Strings(accessScope...)
+	opts := &apigw2.AddRoutesOptions{
+		Path:        jsii.String(endpoint + "/{any+}"),
+		Integration: lambda,
+	}
+	if gw.authorizer != nil {
 		opts.Authorizer = gw.authorizer
-	}
-
-	node := gw.restapi.Root()
-	segments, segment := filepath.Split(endpoint)
-
-	if segments != "" {
-		for _, seg := range strings.Split(segments, "/") {
-			if seg != "" {
-				x := node.GetResource(jsii.String(seg))
-				if x != nil {
-					node = x
-				} else {
-					node = node.AddResource(jsii.String(seg), nil)
-				}
-			}
+		if gw.enableScopes {
+			opts.AuthorizationScopes = jsii.Strings(accessScope...)
 		}
 	}
 
-	rsc := node.AddResource(jsii.String(segment), nil)
-	rsc.AddMethod(jsii.String("ANY"), lambda, opts)
-
-	sub := rsc.AddResource(jsii.String("{any+}"), nil)
-	sub.AddMethod(jsii.String("ANY"), lambda, opts)
-
-	return gw
+	gw.restapi.AddRoutes(opts)
 }

@@ -1,7 +1,7 @@
 github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
-github.com/aws/aws-cdk-go/awscdk/v2 v2.132.0 h1:eKGjvml5VBFv7EAQHOPBf3KcfkssT5DUiYw0//BotOM=
-github.com/aws/aws-cdk-go/awscdk/v2 v2.132.0/go.mod h1:TpmJwOnoajvRtwnLlJoxEoppb9sVoCLfPGLdgoTDH7o=
+github.com/aws/aws-cdk-go/awscdk/v2 v2.132.1 h1:Fw6lcBU4G0n4OhjBRrB9Mj33LcATrcFraZVD6P4c1oA=
+github.com/aws/aws-cdk-go/awscdk/v2 v2.132.1/go.mod h1:TpmJwOnoajvRtwnLlJoxEoppb9sVoCLfPGLdgoTDH7o=
 github.com/aws/aws-lambda-go v1.46.0 h1:UWVnvh2h2gecOlFhHQfIPQcD8pL/f7pVCutmFl+oXU8=
 github.com/aws/aws-lambda-go v1.46.0/go.mod h1:dpMpZgvWx5vuQJfBt0zqBha60q7Dd7RfgJv23DymV8A=
 github.com/aws/constructs-go/constructs/v10 v10.3.0 h1:LsjBIMiaDX/vqrXWhzTquBJ9pPdi02/H+z1DCwg0PEM=
