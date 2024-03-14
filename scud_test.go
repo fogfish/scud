@@ -220,7 +220,32 @@ func TestAddResourceDepthPath(t *testing.T) {
 	}
 }
 
-func TestConfigAuthorizer(t *testing.T) {
+func TestWithAuthorizerIAM(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	f := scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodePackage: "github.com/fogfish/scud",
+			SourceCodeLambda:  "test/lambda/go",
+		},
+	)
+
+	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
+	gw.WithAuthorizerIAM()
+	gw.AddResource("/test", f)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::ApiGatewayV2::Api"): jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
+func TestWithAuthorizerCognito(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
 
