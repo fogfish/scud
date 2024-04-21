@@ -36,7 +36,7 @@ type Compiler interface {
 func AssetCodeGo(compiler Compiler) awslambda.Code {
 	hash := hashpkg(compiler.SourceCodePackage(), compiler.SourceCodeLambda())
 	return awslambda.NewAssetCode(
-		jsii.String(""),
+		jsii.String(compiler.SourceCodeLambda()),
 		&awss3assets.AssetOptions{
 			AssetHashType: awscdk.AssetHashType_CUSTOM,
 			AssetHash:     jsii.String(hash),
