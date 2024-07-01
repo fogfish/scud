@@ -1,96 +1,161 @@
-# scud
+<p align="center">
+  <img src="./doc/scud-logo.png" height="240" />
+  <h3 align="center">scud</h3>
+  <p align="center"><strong>simplified serverless api gateway (AWS CDK L3)</strong></p>
 
-`scud` is a Simple Cloud Usable Daemon for serverless RESTful API development. 
-This library is AWS CDK pattern that takes care about infrastructure boilerplate so that you focuses on development of application logic. 
+  <p align="center">
+    <!-- Version -->
+    <a href="https://github.com/fogfish/scud/releases">
+      <img src="https://img.shields.io/github/v/tag/fogfish/scud?label=version" />
+    </a>
+    <!-- Documentation -->
+    <a href="https://pkg.go.dev/github.com/fogfish/scud">
+      <img src="https://pkg.go.dev/badge/github.com/fogfish/scud" />
+    </a>
+    <!-- Build Status  -->
+    <a href="https://github.com/fogfish/scud/actions/">
+      <img src="https://github.com/fogfish/scud/workflows/build/badge.svg" />
+    </a>
+    <!-- GitHub -->
+    <a href="http://github.com/fogfish/scud">
+      <img src="https://img.shields.io/github/last-commit/fogfish/scud.svg" />
+    </a>
+    <!-- Coverage -->
+    <a href="https://coveralls.io/github/fogfish/scud?branch=main">
+      <img src="https://coveralls.io/repos/github/fogfish/scud/badge.svg?branch=main" />
+    </a>
+    <!-- Go Card -->
+    <a href="https://goreportcard.com/report/github.com/fogfish/scud">
+      <img src="https://goreportcard.com/badge/github.com/fogfish/scud" />
+    </a>
+  </p>
+</p>
 
-[![Version](https://img.shields.io/github/v/tag/fogfish/scud?label=version)](https://github.com/fogfish/scud/tags)
-[![Build Status](https://github.com/fogfish/scud/workflows/build/badge.svg)](https://github.com/fogfish/scud/actions/)
-[![Git Hub](https://img.shields.io/github/last-commit/fogfish/scud.svg)](https://github.com/fogfish/scud)
-[![Coverage Status](https://coveralls.io/repos/github/fogfish/scud/badge.svg?branch=main)](https://coveralls.io/github/fogfish/scud?branch=main)
+--- 
+
+`scud` is a Simple Cloud Usable Daemon (API Gateway) designed for serverless RESTful API development. This library is an AWS CDK L3 pattern that handles the infrastructure boilerplate, allowing you to focus on developing application logic.
 
 
 ## Inspiration
 
 AWS API Gateway and AWS Lambda is a perfect approach for quick prototyping or production development of microservice on Amazon Web Services. Unfortunately, it requires a boilerplate AWS CDK code to bootstrap the development. This library implements a high-order components on top of AWS CDK that hardens the api pattern
 
-![RESTful API Pattern](scud.svg "RESTful API Pattern")
+![RESTful API Pattern](./doc/scud.excalidraw.svg "RESTful API Pattern")
 
-The library helps with building of lambda functions by
-* integrating "compilation" fo Golang serverless functions within cdk workflows.
-* integrates validation of OAuth2 Bearer token for each API endpoint
+The library aids in building Lambda functions by:
+* Integrating the "compilation" of Golang serverless functions ("assets") within CDK workflows;
+* Providing validation of OAuth2 Bearer tokens for each API endpoint, using various identity provides (IAM, JWT tokens and AWS Cognito).
 
+- [Inspiration](#inspiration)
+- [Getting started](#getting-started)
+  - [Quick Start](#quick-start)
+- [User Guide](#user-guide)
+  - [Serverless functions](#serverless-functions)
+  - [Serverless functions (arch amd64)](#serverless-functions-arch-amd64)
+  - [API Gateway](#api-gateway)
+  - [API Gateway (Domain Name)](#api-gateway-domain-name)
+  - [API Gateway (Resources)](#api-gateway-resources)
+  - [Authorizer IAM](#authorizer-iam)
+  - [Authorizer AWS Cognito](#authorizer-aws-cognito)
+  - [Authorizer JWT](#authorizer-jwt)
+- [HowTo Contribute](#howto-contribute)
+- [License](#license)
+- [References](#references)
 
 ## Getting started
 
 The latest version of the library is available at its `main` branch. All development, including new features and bug fixes, take place on the `main` branch using forking and pull requests as described in contribution guidelines. The stable version is available via Golang modules.
 
-1. Use `go get` to retrieve the library and add it as dependency to your application.
+Use `go get` to retrieve the library and add it as dependency to your application.
 
 ```bash
 go get -u github.com/fogfish/scud
 ```
 
-2. Import it in your code
+### Quick Start
 
 ```go
-import "github.com/fogfish/scud"
-```
+package main
 
-### Example RESTful API 
-
-```go
 import (
   "github.com/aws/aws-cdk-go/awscdk/v2"
-  "github.com/aws/constructs-go/constructs/v10"
+  "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
   "github.com/aws/jsii-runtime-go"
   "github.com/fogfish/scud"
 )
 
-func NewService(scope constructs.Construct) {
-  // 1. declare lambda function
-  myfun := scud.NewFunctionGo(scope, jsii.String("test"),
+func main() {
+  app := awscdk.NewApp(nil)
+  stack := awscdk.NewStack(app, jsii.String("example-api"), nil)
+
+  // API Gateway
+  api := scud.NewGateway(stack, jsii.String("Gateway"), &scud.GatewayProps{})
+
+  // Handler Function
+  fun := scud.NewFunctionGo(stack, jsii.String("Handler"),
     &scud.FunctionGoProps{
-      SourceCodePackage: "github.com/mygithub/myservice",
-      SourceCodeLambda:  "aws/lambda/example",
-      /* FunctionProps: optionally other awslambda.FunctionProps */
+      SourceCodeModule: "github.com/fogfish/scud",
+      SourceCodeLambda:  "test/lambda/go",
     },
   )
 
-  // 2. declare api gateway
-  gateway := scud.NewGateway(stack, jsii.String("Gateway"),
-    &scud.GatewayProps{}
-  )
+  // Example endpoint
+  api.AddResource("/example", fun)
 
-  // 3. assembles RESTful api service from gateway and lambda functions
-  gateway.AddResource("/hello", myfun)
-  gateway.AddResource("/world/europe", myfun)
-  gateway.AddResource("/world/asia", myfun)
+  app.Synth(nil)
 }
-
-// 4. injects the service to stack
-stack := awscdk.NewStack(/* ... */)
-NewService(stack)
 ```
 
-Please see the RESTful API templates, clone them to draft a new microservice in matter of minutes:
-* [blueprint-serverless-golang](https://github.com/fogfish/blueprint-serverless-golang)
+See advanced example as [the service blueprint](https://github.com/fogfish/blueprint-serverless-golang) 
 
 
-### Example ARM64 functions
+## User Guide
+
+### Serverless functions
+
+AWS CDK supports a bundling feature that streamlines the process of creating assets for Lambda functions from source code. This feature is particularly useful for compiling and packaging your code in languages such as Golang, which need to be converted from source files into executable binaries. The library simplify bundling thought built in presets for assembling ARM64 lambdas for Amazon Linux 2.
 
 ```go
-myfun := scud.NewFunctionGo(scope, jsii.String("test"),
-    &scud.FunctionGoProps{
-      SourceCodePackage: "github.com/mygithub/myservice",
-      SourceCodeLambda:  "aws/lambda/example",
-      GoEnv: map[string]string{"GOARCH": "arm64"},
-    },
-  )
+scud.NewFunctionGo(stack, jsii.String("Handler"),
+  &scud.FunctionGoProps{
+    // Golang module that containing the function
+    SourceCodeModule: "github.com/fogfish/scud",
+    // Path to lambda function within the module 
+    SourceCodeLambda:  "test/lambda/go",
+    // Lambda properties
+    FunctionProps: &awslambda.FunctionProps{},
+  },
+)
 ```
 
-### Example RESTful API with Domain Name
+### Serverless functions (arch amd64)
 
-Supply custom domain name and ARN of Certificate
+ARM64 is default architecture for lambda function. Use `GoEnv` property to build lambda for other architecture.
+
+
+```go
+scud.NewFunctionGo(scope, jsii.String("test"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda:  "test/lambda/go",
+    GoEnv: map[string]string{"GOARCH": "amd64"},
+  },
+)
+```
+
+### API Gateway 
+
+The library defined presets for AWS API Gateway V2. 
+
+```go
+scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{}
+)
+```
+
+### API Gateway (Domain Name)
+
+The library deploy gateway using default AWS host naming convention `https://{uid}.execute-api.{region}.amazonaws.com`. Supply custom domain name and Certificate ARN for custom naming.
 
 ```go
 scud.NewGateway(stack, jsii.String("Gateway"),
@@ -101,33 +166,66 @@ scud.NewGateway(stack, jsii.String("Gateway"),
 )
 ```
 
+### API Gateway (Resources)
 
-### Example protect RESTful API with OAuth2
-
-The construct supports integration with AWS Cognito, the integration of AWS API Gateway and AWS Cognito is well depicted by [official documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html). The pattern enables deployment of this configuration, just supply ARN of user pool and supply scopes to protect endpoints 
+The Gateway construct implements the `AddResource` function to associate a Lambda function with a REST API path. It uses the specified path as a prefix, enabling the association of the Lambda function with all subpaths under that prefix. 
 
 ```go
-gw := scud.NewGateway(stack, jsii.String("Gateway"),
-  &scud.GatewayProps{},
-)
-
-// Using AWS Cognito
-gw.WithAuthorizerCognito("arn:aws:cognito-idp:...").
-gw.AddResource("/hello", myfun, "my/scope")
-
-// Using AWS IAM
-gw.WithAuthorizerIAM().
-gw.AddResource("/hello", myfun)
+gateway.AddResource("/example", handler)
 ```
 
-You can still access API with curl even if IAM authorizer is used
+### Authorizer IAM
+
+The library supports integration with AWS IAM to authorize incoming requests. This integration ensures that only authenticated and authorized principals  can access the resources and functionalities provided by your Lambda functions. By leveraging AWS IAM policies and roles, the library enforces fine-grained access control, enhancing the security of your API endpoints.
+
+```go
+api := scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{}
+)
+
+// Using the IAM authorizer requires specifying a principal or role. 
+role := awsiam.NewRole(/* ... */)
+
+api.NewAuthorizerIAM().
+  AddResource("/example", handler, role)
+```
+
+You can still access API with curl even with IAM authorizer is used.
 
 ```bash
 curl https://example.com/petshop/pets \
   -XGET \
   -H "Accept: application/json" \
+  -H "x-amz-security-token: $AWS_SESSION_TOKEN" \
   --aws-sigv4 "aws:amz:eu-west-1:execute-api" \
-  --user "$AWS_ACCESS_KEY_ID":"$AWS_SECRET_ACCESS_KEY"
+  --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY"
+```
+
+### Authorizer AWS Cognito
+
+The library supports integration with AWS Cognito to authorize incoming requests. This integration allows you to manage user authentication and authorization seamlessly. By utilizing AWS Cognito, you can implement robust user sign-up, sign-in, and access control mechanisms. The library ensures that only authenticated users with valid tokens can access your API endpoints, providing an additional layer of security and user management capabilities. The integration of AWS API Gateway and AWS Cognito is well documented in [the official documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html). This pattern facilitates the deployment of this configuration by simply providing the ARN of the user pool and specifying scopes to protect your endpoints.
+
+```go
+api := scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{}
+)
+
+// Cognito pool has to be pre-defined
+api.NewAuthorizerCognito("arn:aws:cognito-idp:...").
+  AddResource("/example", handler, "my/scope")
+```
+
+### Authorizer JWT
+
+The library supports integration with Single Sign On provider (e.g. Auth0) to authorize incoming requests using JWT tokens. This integration allows you to leverage external identity providers for user authentication, ensuring secure and seamless access to your API endpoints. By validating JWT tokens issued by the SSO provider, the library ensures that only authenticated users can access your resources. Additionally, this setup can support various SSO standards and providers, enhancing flexibility and security in managing user identities and permissions.
+
+```go
+api := scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{}
+)
+
+api.NewAuthorizerJwt("https://{tenant}.eu.auth0.com/", "https://example.com").
+  AddResource("/example", handler, "my/scope")
 ```
 
 ## HowTo Contribute
@@ -153,4 +251,5 @@ go test
 [![See LICENSE](https://img.shields.io/github/license/fogfish/scud.svg?style=for-the-badge)](LICENSE)
 
 ## References
+
 1. [Migrating AWS Lambda functions from the Go1.x runtime to the custom runtime on Amazon Linux 2](https://aws.amazon.com/blogs/compute/migrating-aws-lambda-functions-from-the-go1-x-runtime-to-the-custom-runtime-on-amazon-linux-2/)
