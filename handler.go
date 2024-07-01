@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2020 Dmitry Kolesnikov
+// Copyright (C) 2020 - 2024 Dmitry Kolesnikov
 //
 // This file may be modified and distributed under the terms
 // of the MIT license.  See the LICENSE file for details.
@@ -22,9 +22,9 @@ import (
 // FunctionGoProps is properties of the function
 type FunctionGoProps struct {
 	*awslambda.FunctionProps
-	SourceCodePackage string
-	SourceCodeLambda  string
-	GoEnv             map[string]string
+	SourceCodeModule string
+	SourceCodeLambda string
+	GoEnv            map[string]string
 }
 
 // NewFunctionGo creates Golang Lambda Function from "inline" code
@@ -44,7 +44,7 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 
 	if props.FunctionName == nil {
 		props.FunctionName = jsii.String(fmt.Sprintf("%s-%s",
-			*awscdk.Aws_STACK_NAME(), filepath.Base(filepath.Join(spec.SourceCodePackage, spec.SourceCodeLambda))))
+			*awscdk.Aws_STACK_NAME(), filepath.Base(filepath.Join(spec.SourceCodeModule, spec.SourceCodeLambda))))
 	}
 
 	// arm64 is default deployment
@@ -58,7 +58,7 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 		}
 	}
 
-	gocc := NewGoCompiler(spec.SourceCodePackage, spec.SourceCodeLambda, spec.GoEnv)
+	gocc := NewGoCompiler(spec.SourceCodeModule, spec.SourceCodeLambda, spec.GoEnv)
 	props.Code = AssetCodeGo(gocc)
 	props.Handler = jsii.String(goBinary)
 	props.Runtime = awslambda.Runtime_PROVIDED_AL2()

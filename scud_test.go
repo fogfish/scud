@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2020 Dmitry Kolesnikov
+// Copyright (C) 2020 - 2024 Dmitry Kolesnikov
 //
 // This file may be modified and distributed under the terms
 // of the MIT license.  See the LICENSE file for details.
@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/assertions"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/fogfish/scud"
@@ -25,8 +26,8 @@ func TestFunctionGo(t *testing.T) {
 
 	scud.NewFunctionGo(stack, jsii.String("test"),
 		&scud.FunctionGoProps{
-			SourceCodePackage: "github.com/fogfish/scud",
-			SourceCodeLambda:  "test/lambda/go",
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
 		},
 	)
 
@@ -53,8 +54,8 @@ func TestFunctionGoArch(t *testing.T) {
 
 		scud.NewFunctionGo(stack, jsii.String("test"),
 			&scud.FunctionGoProps{
-				SourceCodePackage: "github.com/fogfish/scud",
-				SourceCodeLambda:  "test/lambda/go",
+				SourceCodeModule: "github.com/fogfish/scud",
+				SourceCodeLambda: "test/lambda/go",
 				GoEnv: map[string]string{
 					"GOARCH": arch,
 				},
@@ -86,8 +87,8 @@ func TestFunctionGoWithProps(t *testing.T) {
 
 	scud.NewFunctionGo(stack, jsii.String("test"),
 		&scud.FunctionGoProps{
-			SourceCodePackage: "github.com/fogfish/scud",
-			SourceCodeLambda:  "test/lambda/go",
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
 			FunctionProps: &awslambda.FunctionProps{
 				FunctionName: jsii.String("test"),
 			},
@@ -117,8 +118,8 @@ func TestFunctionGoMany(t *testing.T) {
 
 	scud.NewFunctionGo(stack, jsii.String("test"),
 		&scud.FunctionGoProps{
-			SourceCodePackage: "github.com/fogfish/scud",
-			SourceCodeLambda:  "test/lambda/go",
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
 			FunctionProps: &awslambda.FunctionProps{
 				FunctionName: jsii.String("test"),
 			},
@@ -127,8 +128,8 @@ func TestFunctionGoMany(t *testing.T) {
 
 	scud.NewFunctionGo(stack, jsii.String("another"),
 		&scud.FunctionGoProps{
-			SourceCodePackage: "github.com/fogfish/scud",
-			SourceCodeLambda:  "test/lambda/another",
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/another",
 			FunctionProps: &awslambda.FunctionProps{
 				FunctionName: jsii.String("another"),
 			},
@@ -170,8 +171,8 @@ func TestAddResource(t *testing.T) {
 
 	f := scud.NewFunctionGo(stack, jsii.String("test"),
 		&scud.FunctionGoProps{
-			SourceCodePackage: "github.com/fogfish/scud",
-			SourceCodeLambda:  "test/lambda/go",
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
 		},
 	)
 
@@ -197,8 +198,8 @@ func TestAddResourceDepthPath(t *testing.T) {
 
 	f := scud.NewFunctionGo(stack, jsii.String("test"),
 		&scud.FunctionGoProps{
-			SourceCodePackage: "github.com/fogfish/scud",
-			SourceCodeLambda:  "test/lambda/go",
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
 		},
 	)
 
@@ -220,20 +221,20 @@ func TestAddResourceDepthPath(t *testing.T) {
 	}
 }
 
-func TestWithAuthorizerIAM(t *testing.T) {
+func TestAuthorizerIAM(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
 
 	f := scud.NewFunctionGo(stack, jsii.String("test"),
 		&scud.FunctionGoProps{
-			SourceCodePackage: "github.com/fogfish/scud",
-			SourceCodeLambda:  "test/lambda/go",
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
 		},
 	)
 
 	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
-	gw.WithAuthorizerIAM()
-	gw.AddResource("/test", f)
+	gw.NewAuthorizerIAM().
+		AddResource("/test", f, awsiam.NewAccountRootPrincipal())
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Api"): jsii.Number(1),
@@ -245,20 +246,45 @@ func TestWithAuthorizerIAM(t *testing.T) {
 	}
 }
 
-func TestWithAuthorizerCognito(t *testing.T) {
+func TestAuthorizerCognito(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
 
 	f := scud.NewFunctionGo(stack, jsii.String("test"),
 		&scud.FunctionGoProps{
-			SourceCodePackage: "github.com/fogfish/scud",
-			SourceCodeLambda:  "test/lambda/go",
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
 		},
 	)
 
 	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
-	gw.WithAuthorizerCognito("arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX")
-	gw.AddResource("/test", f, "test")
+	gw.NewAuthorizerCognito("arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX").
+		AddResource("/test", f, "test")
+
+	require := map[*string]*float64{
+		jsii.String("AWS::ApiGatewayV2::Authorizer"): jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
+func TestAuthorizerJwt(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	f := scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
+		},
+	)
+
+	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
+	gw.NewAuthorizerJwt("iss", "aud").
+		AddResource("/test", f)
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Authorizer"): jsii.Number(1),
