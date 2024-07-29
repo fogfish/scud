@@ -59,6 +59,9 @@ func TestFunctionGoArch(t *testing.T) {
 				GoEnv: map[string]string{
 					"GOARCH": arch,
 				},
+				GoVar: map[string]string{
+					"main.vsn": "1.2.3",
+				},
 			},
 		)
 

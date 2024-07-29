@@ -1,10 +1,12 @@
 package scud
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -15,7 +17,8 @@ type GoCompiler struct {
 	sourceCode        string
 	sourceCodePackage string
 	sourceCodeLambda  string
-	env               map[string]string
+	govar             map[string]string
+	goenv             map[string]string
 }
 
 const goBinary = "bootstrap"
@@ -23,17 +26,23 @@ const goBinary = "bootstrap"
 func NewGoCompiler(
 	sourceCodePackage string,
 	sourceCodeLambda string,
-	env map[string]string,
+	govar map[string]string,
+	goenv map[string]string,
 ) *GoCompiler {
-	if env == nil {
-		env = map[string]string{}
+	if goenv == nil {
+		goenv = map[string]string{}
+	}
+
+	if govar == nil {
+		govar = map[string]string{}
 	}
 
 	return &GoCompiler{
 		sourceCode:        filepath.Join(sourceCodePackage, sourceCodeLambda),
 		sourceCodePackage: sourceCodePackage,
 		sourceCodeLambda:  sourceCodeLambda,
-		env:               env,
+		govar:             govar,
+		goenv:             goenv,
 	}
 }
 
@@ -43,7 +52,17 @@ func (g *GoCompiler) SourceCodeLambda() string  { return g.sourceCodeLambda }
 func (g *GoCompiler) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *bool {
 	t := time.Now()
 
-	cmd := exec.Command("go", "build", "-tags", "lambda.norpc", "-o", filepath.Join(*outputDir, goBinary), filepath.Join(g.sourceCode))
+	goflags := []string{"build", "-tags", "lambda.norpc"}
+
+	ldflags := []string{"-s", "-w"}
+	for name, value := range g.govar {
+		ldflags = append(ldflags, fmt.Sprintf("-X %s=%s", name, value))
+	}
+	goflags = append(goflags, "-ldflags", strings.Join(ldflags, " "))
+	goflags = append(goflags, "-o", filepath.Join(*outputDir, goBinary))
+	goflags = append(goflags, filepath.Join(g.sourceCode))
+
+	cmd := exec.Command("go", goflags...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = g.cmdEnv()
@@ -76,8 +95,8 @@ func (g *GoCompiler) cmdEnv() []string {
 		"GOROOT",
 		"GOMODCACHE",
 	} {
-		if _, exists := g.env[envvar]; !exists {
-			g.env[envvar] = os.Getenv(envvar)
+		if _, exists := g.goenv[envvar]; !exists {
+			g.goenv[envvar] = os.Getenv(envvar)
 		}
 	}
 
@@ -86,21 +105,21 @@ func (g *GoCompiler) cmdEnv() []string {
 		"GOARCH":      "arm64",
 		"CGO_ENABLED": "0",
 	} {
-		if _, exists := g.env[envvar]; !exists {
-			g.env[envvar] = defval
+		if _, exists := g.goenv[envvar]; !exists {
+			g.goenv[envvar] = defval
 		}
 	}
 
 	for envvar, gen := range map[string]func() string{
 		"GOCACHE": g.goCache,
 	} {
-		if _, exists := g.env[envvar]; !exists {
-			g.env[envvar] = gen()
+		if _, exists := g.goenv[envvar]; !exists {
+			g.goenv[envvar] = gen()
 		}
 	}
 
 	env := make([]string, 0)
-	for key, val := range g.env {
+	for key, val := range g.goenv {
 		env = append(env, key+"="+val)
 	}
 	return env
