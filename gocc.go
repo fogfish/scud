@@ -17,6 +17,7 @@ type GoCompiler struct {
 	sourceCode        string
 	sourceCodePackage string
 	sourceCodeLambda  string
+	sourceCodeVersion string
 	govar             map[string]string
 	goenv             map[string]string
 }
@@ -26,6 +27,7 @@ const goBinary = "bootstrap"
 func NewGoCompiler(
 	sourceCodePackage string,
 	sourceCodeLambda string,
+	sourceCodeVersion string,
 	govar map[string]string,
 	goenv map[string]string,
 ) *GoCompiler {
@@ -41,13 +43,15 @@ func NewGoCompiler(
 		sourceCode:        filepath.Join(sourceCodePackage, sourceCodeLambda),
 		sourceCodePackage: sourceCodePackage,
 		sourceCodeLambda:  sourceCodeLambda,
+		sourceCodeVersion: sourceCodeVersion,
 		govar:             govar,
 		goenv:             goenv,
 	}
 }
 
-func (g *GoCompiler) SourceCodePackage() string { return g.sourceCodePackage }
+func (g *GoCompiler) SourceCodeModule() string  { return g.sourceCodePackage }
 func (g *GoCompiler) SourceCodeLambda() string  { return g.sourceCodeLambda }
+func (g *GoCompiler) SourceCodeVersion() string { return g.sourceCodeVersion }
 
 func (g *GoCompiler) TryBundle(outputDir *string, options *awscdk.BundlingOptions) *bool {
 	t := time.Now()
@@ -55,6 +59,10 @@ func (g *GoCompiler) TryBundle(outputDir *string, options *awscdk.BundlingOption
 	goflags := []string{"build", "-tags", "lambda.norpc"}
 
 	ldflags := []string{"-s", "-w"}
+	if g.sourceCodeVersion != "" {
+		ldflags = append(ldflags, fmt.Sprintf("-X main.version=%s", g.sourceCodeVersion))
+	}
+
 	for name, value := range g.govar {
 		ldflags = append(ldflags, fmt.Sprintf("-X %s=%s", name, value))
 	}

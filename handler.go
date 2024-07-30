@@ -22,10 +22,11 @@ import (
 // FunctionGoProps is properties of the function
 type FunctionGoProps struct {
 	*awslambda.FunctionProps
-	SourceCodeModule string
-	SourceCodeLambda string
-	GoEnv            map[string]string
-	GoVar            map[string]string
+	SourceCodeModule  string
+	SourceCodeLambda  string
+	SourceCodeVersion string
+	GoEnv             map[string]string
+	GoVar             map[string]string
 }
 
 // NewFunctionGo creates Golang Lambda Function from "inline" code
@@ -59,7 +60,13 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 		}
 	}
 
-	gocc := NewGoCompiler(spec.SourceCodeModule, spec.SourceCodeLambda, spec.GoVar, spec.GoEnv)
+	gocc := NewGoCompiler(
+		spec.SourceCodeModule,
+		spec.SourceCodeLambda,
+		spec.SourceCodeVersion,
+		spec.GoVar,
+		spec.GoEnv,
+	)
 	props.Code = AssetCodeGo(gocc)
 	props.Handler = jsii.String(goBinary)
 	props.Runtime = awslambda.Runtime_PROVIDED_AL2()

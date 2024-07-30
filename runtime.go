@@ -28,13 +28,14 @@ import (
 
 type Compiler interface {
 	awscdk.ILocalBundling
-	SourceCodePackage() string
+	SourceCodeModule() string
 	SourceCodeLambda() string
+	SourceCodeVersion() string
 }
 
 // AssetCodeGo bundles lambda function from source code
 func AssetCodeGo(compiler Compiler) awslambda.Code {
-	hash := hashpkg(compiler.SourceCodePackage(), compiler.SourceCodeLambda())
+	hash := hashpkg(compiler)
 	return awslambda.NewAssetCode(
 		jsii.String("."),
 		&awss3assets.AssetOptions{
@@ -48,10 +49,18 @@ func AssetCodeGo(compiler Compiler) awslambda.Code {
 		})
 }
 
-func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
+func hashpkg(compiler Compiler) string {
+	vsn := ""
+	if compiler.SourceCodeVersion() != "" {
+		vsn = fmt.Sprintf("@%s", compiler.SourceCodeVersion())
+	}
+
+	pkg := fmt.Sprintf("package: %s %s%s", compiler.SourceCodeModule(), compiler.SourceCodeLambda(), vsn)
+	path := filepath.Join(compiler.SourceCodeModule(), compiler.SourceCodeLambda())
+
 	t := time.Now()
 	hash := sha256.New()
-	_, err := hash.Write([]byte(fmt.Sprintf("package: %s %s", sourceCodePackage, sourceCodeLambda)))
+	_, err := hash.Write([]byte(pkg))
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +72,7 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 
 	sourceCode := os.Getenv("GITHUB_WORKSPACE")
 	if sourceCode == "" {
-		sourceCode = filepath.Join(os.Getenv("GOPATH"), "src", sourceCodePackage)
+		sourceCode = filepath.Join(os.Getenv("GOPATH"), "src", compiler.SourceCodeModule())
 	}
 
 	err = filepath.Walk(
@@ -84,7 +93,7 @@ func hashpkg(sourceCodePackage, sourceCodeLambda string) string {
 
 	v := hash.Sum(nil)
 	d := time.Since(t)
-	log.Printf("==> checksum %s %x (%v)\n", filepath.Join(sourceCodePackage, sourceCodeLambda), v[:4], d)
+	log.Printf("==> checksum %x | %s%s (%v)\n", v[:4], path, vsn, d)
 	return fmt.Sprintf("%x", v)
 }
 
