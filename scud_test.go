@@ -54,13 +54,14 @@ func TestFunctionGoArch(t *testing.T) {
 
 		scud.NewFunctionGo(stack, jsii.String("test"),
 			&scud.FunctionGoProps{
-				SourceCodeModule: "github.com/fogfish/scud",
-				SourceCodeLambda: "test/lambda/go",
+				SourceCodeModule:  "github.com/fogfish/scud",
+				SourceCodeLambda:  "test/lambda/go",
+				SourceCodeVersion: "v1.2.3",
 				GoEnv: map[string]string{
 					"GOARCH": arch,
 				},
 				GoVar: map[string]string{
-					"main.vsn": "1.2.3",
+					"main.some": "1.2.3",
 				},
 			},
 		)
