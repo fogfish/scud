@@ -178,9 +178,10 @@ func TestFunctionGoContainerArch(t *testing.T) {
 
 		scud.NewContainerGo(stack, jsii.String("test"),
 			&scud.ContainerGoProps{
-				SourceCodeModule:  "github.com/fogfish/scud",
-				SourceCodeLambda:  "test/lambda/go",
-				SourceCodeVersion: "v1.2.3",
+				DockerImageFunctionProps: &awslambda.DockerImageFunctionProps{},
+				SourceCodeModule:         "github.com/fogfish/scud",
+				SourceCodeLambda:         "test/lambda/go",
+				SourceCodeVersion:        "v1.2.3",
 				GoEnv: map[string]string{
 					"GOARCH": arch,
 				},
