@@ -141,6 +141,32 @@ func TestFunctionGoMany(t *testing.T) {
 	)
 }
 
+func TestFunctionGoContainer(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	scud.NewContainerGo(stack, jsii.String("test"),
+		&scud.ContainerGoProps{
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
+			StaticAssets: []string{
+				"test/lambda/go/main.go",
+			},
+		},
+	)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
+		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
 func TestCreateGateway(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)

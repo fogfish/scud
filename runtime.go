@@ -70,13 +70,8 @@ func hashpkg(compiler Compiler) string {
 		panic(err)
 	}
 
-	sourceCode := os.Getenv("GITHUB_WORKSPACE")
-	if sourceCode == "" {
-		sourceCode = filepath.Join(os.Getenv("GOPATH"), "src", compiler.SourceCodeModule())
-	}
-
 	err = filepath.Walk(
-		sourceCode,
+		rootSourceCode(compiler.SourceCodeModule()),
 		func(path string, info fs.FileInfo, err error) error {
 			if exp.MatchString(path) {
 				if err := hashfile(hash, path); err != nil {
@@ -120,4 +115,13 @@ func hashfile(hash hash.Hash, file string) error {
 	}
 
 	return nil
+}
+
+func rootSourceCode(sourceCodeModule string) string {
+	sourceCode := os.Getenv("GITHUB_WORKSPACE")
+	if sourceCode == "" {
+		sourceCode = filepath.Join(os.Getenv("GOPATH"), "src", sourceCodeModule)
+	}
+
+	return sourceCode
 }
