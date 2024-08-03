@@ -52,6 +52,7 @@ The library aids in building Lambda functions by:
 - [User Guide](#user-guide)
   - [Serverless functions](#serverless-functions)
   - [Serverless functions (arch amd64)](#serverless-functions-arch-amd64)
+  - [Serverless function (Docker container)](#serverless-function-docker-container)
   - [API Gateway](#api-gateway)
   - [API Gateway (Domain Name)](#api-gateway-domain-name)
   - [API Gateway (Resources)](#api-gateway-resources)
@@ -132,7 +133,6 @@ scud.NewFunctionGo(stack, jsii.String("Handler"),
 
 ARM64 is default architecture for lambda function. Use `GoEnv` property to build lambda for other architecture.
 
-
 ```go
 scud.NewFunctionGo(scope, jsii.String("test"),
   &scud.FunctionGoProps{
@@ -142,6 +142,26 @@ scud.NewFunctionGo(scope, jsii.String("test"),
   },
 )
 ```
+
+### Serverless function (Docker container)
+
+Zip files is default distribution method for lambda function. The library support building it from containers.
+
+```go
+scud.NewContainerGo(stack, jsii.String("test"),
+  &scud.ContainerGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda: "test/lambda/go",
+    StaticAssets: []string{
+      // list of files to be include into container
+      // path is relative to SourceCodeModule
+      // For example 
+      "test/lambda/go/main.go"
+    },
+  },
+)
+```
+
 
 ### API Gateway 
 

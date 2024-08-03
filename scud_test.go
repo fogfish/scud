@@ -141,6 +141,75 @@ func TestFunctionGoMany(t *testing.T) {
 	)
 }
 
+func TestFunctionGoContainer(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	scud.NewContainerGo(stack, jsii.String("test"),
+		&scud.ContainerGoProps{
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
+			StaticAssets: []string{
+				"test/lambda/go/main.go",
+			},
+		},
+	)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
+		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
+func TestFunctionGoContainerArch(t *testing.T) {
+	for arch, config := range map[string]string{
+		"arm64": "arm64",
+		"amd64": "x86_64",
+	} {
+
+		app := awscdk.NewApp(nil)
+		stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+		scud.NewContainerGo(stack, jsii.String("test"),
+			&scud.ContainerGoProps{
+				DockerImageFunctionProps: &awslambda.DockerImageFunctionProps{},
+				SourceCodeModule:         "github.com/fogfish/scud",
+				SourceCodeLambda:         "test/lambda/go",
+				SourceCodeVersion:        "v1.2.3",
+				GoEnv: map[string]string{
+					"GOARCH": arch,
+				},
+				GoVar: map[string]string{
+					"main.some": "1.2.3",
+				},
+			},
+		)
+
+		require := map[*string]*float64{
+			jsii.String("AWS::IAM::Role"):        jsii.Number(2),
+			jsii.String("AWS::Lambda::Function"): jsii.Number(2),
+			jsii.String("Custom::LogRetention"):  jsii.Number(1),
+		}
+
+		template := assertions.Template_FromStack(stack, nil)
+		for key, val := range require {
+			template.ResourceCountIs(key, val)
+		}
+
+		template.HasResourceProperties(jsii.String("AWS::Lambda::Function"),
+			map[string]any{
+				"Architectures": []string{config},
+			},
+		)
+	}
+}
+
 func TestCreateGateway(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
