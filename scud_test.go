@@ -213,6 +213,52 @@ func TestFunctionGoContainerArch(t *testing.T) {
 	}
 }
 
+func TestUniversalWithFunction(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	scud.NewFunction(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
+		},
+	)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
+		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
+func TestUniversalWithContainer(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	scud.NewFunction(stack, jsii.String("test"),
+		&scud.ContainerGoProps{
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
+		},
+	)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
+		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
 func TestCreateGateway(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
