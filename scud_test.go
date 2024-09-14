@@ -152,6 +152,9 @@ func TestFunctionGoContainer(t *testing.T) {
 			StaticAssets: []string{
 				"test/lambda/go/main.go",
 			},
+			Packages: []string{
+				"zip",
+			},
 		},
 	)
 

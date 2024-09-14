@@ -22,11 +22,28 @@ import (
 // FunctionGoProps is properties of the function
 type FunctionGoProps struct {
 	*awslambda.FunctionProps
-	SourceCodeModule  string
-	SourceCodeLambda  string
+
+	// Canonical name of Golang module that containing the function
+	//	SourceCodeModule: "github.com/fogfish/scud",
+	SourceCodeModule string
+
+	// Path to lambda function relative to the module
+	//	SourceCodeLambda:  "test/lambda/go"
+	SourceCodeLambda string
+
+	// The version of software asset passed as linker flag
+	//	-ldflags '-X main.version=...'
 	SourceCodeVersion string
-	GoEnv             map[string]string
-	GoVar             map[string]string
+
+	// Variables and its values passed as linker flags
+	//	-ldflags '-X key1=val1 -X key2=val2 ...'
+	GoVar map[string]string
+
+	// Go environment, default includes
+	//	GOOS=linux
+	//	GOARCH=arm64
+	//	CGO_ENABLED=0
+	GoEnv map[string]string
 }
 
 // NewFunctionGo creates Golang Lambda Function from "inline" code
