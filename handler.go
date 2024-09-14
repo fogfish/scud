@@ -27,7 +27,7 @@ type FunctionGoProps struct {
 	//	SourceCodeModule: "github.com/fogfish/scud",
 	SourceCodeModule string
 
-	// Path to lambda function within the module
+	// Path to lambda function relative to the module
 	//	SourceCodeLambda:  "test/lambda/go"
 	SourceCodeLambda string
 

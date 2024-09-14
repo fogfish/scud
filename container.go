@@ -32,7 +32,7 @@ type ContainerGoProps struct {
 	//	SourceCodeModule: "github.com/fogfish/scud",
 	SourceCodeModule string
 
-	// Path to lambda function within the module
+	// Path to lambda function relative to the module
 	//	SourceCodeLambda:  "test/lambda/go"
 	SourceCodeLambda string
 
@@ -50,7 +50,7 @@ type ContainerGoProps struct {
 	//	CGO_ENABLED=0
 	GoEnv map[string]string
 
-	// Static files included into container
+	// Static files included into container, the path is relative to module
 	StaticAssets []string
 
 	// Linux Alpine Packages (apk) to be installed within the container
@@ -111,6 +111,52 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 		panic(fmt.Errorf("unable to build %s/%s", spec.SourceCodeModule, spec.SourceCodeLambda))
 	}
 
+	docker := fmt.Sprintf(`
+FROM %s
+%s
+%s
+ADD bootstrap /bin/bootstrap
+
+CMD ["/bin/bootstrap"]
+	`, dockerBaseImage(spec), dockerPackages(spec), dockerAssets(path, spec))
+
+	err := os.WriteFile(filepath.Join(path, "Dockerfile"), []byte(docker), 0664)
+	if err != nil {
+		panic(err)
+	}
+
+	props.Code = awslambda.DockerImageCode_FromImageAsset(
+		jsii.String(path),
+		&awslambda.AssetImageCodeProps{
+			Platform: platCode,
+			BuildArgs: &map[string]*string{
+				"platform": jsii.String(platContainer),
+			},
+		},
+	)
+
+	return awslambda.NewDockerImageFunction(scope, id, &props)
+}
+
+func dockerBaseImage(spec *ContainerGoProps) string {
+	if len(spec.Packages) == 0 {
+		return "scratch"
+
+	}
+	return "alpine"
+}
+
+func dockerPackages(spec *ContainerGoProps) string {
+	if len(spec.Packages) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("RUN apk --no-cache add --update %s\n",
+		strings.Join(spec.Packages, " "),
+	)
+}
+
+func dockerAssets(path string, spec *ContainerGoProps) string {
 	root := rootSourceCode(spec.SourceCodeModule)
 
 	assets := []string{}
@@ -129,40 +175,7 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 		assets = append(assets, fmt.Sprintf("ADD %s /opt/%s", asset, asset))
 	}
 
-	base := "scratch"
-	pkgs := ""
-	if len(spec.Packages) > 0 {
-		base = "alpine"
-		pkgs = fmt.Sprintf("RUN apk --no-cache add --update %s\n",
-			strings.Join(assets, " "),
-		)
-	}
-
-	docker := fmt.Sprintf(`
-FROM %s
-%s
-%s
-ADD bootstrap /bin/bootstrap
-
-CMD ["/bin/bootstrap"]
-	`, base, pkgs, strings.Join(assets, "\n"))
-
-	err := os.WriteFile(filepath.Join(path, "Dockerfile"), []byte(docker), 0664)
-	if err != nil {
-		panic(err)
-	}
-
-	props.Code = awslambda.DockerImageCode_FromImageAsset(
-		jsii.String(path),
-		&awslambda.AssetImageCodeProps{
-			Platform: platCode,
-			BuildArgs: &map[string]*string{
-				"platform": jsii.String(platContainer),
-			},
-		},
-	)
-
-	return awslambda.NewDockerImageFunction(scope, id, &props)
+	return strings.Join(assets, "\n")
 }
 
 func copy(source, target string) (err error) {
