@@ -46,6 +46,8 @@ type FunctionGoProps struct {
 	GoEnv map[string]string
 }
 
+func (*FunctionGoProps) Type(awslambda.Function) {}
+
 // NewFunctionGo creates Golang Lambda Function from "inline" code
 func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps) awslambda.Function {
 	var props awslambda.FunctionProps

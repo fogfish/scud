@@ -57,6 +57,8 @@ type ContainerGoProps struct {
 	Packages []string
 }
 
+func (*ContainerGoProps) Type(awslambda.Function) {}
+
 func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoProps) awslambda.Function {
 	var props awslambda.DockerImageFunctionProps
 	if spec.DockerImageFunctionProps != nil {
