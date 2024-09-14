@@ -27,12 +27,34 @@ import (
 
 type ContainerGoProps struct {
 	*awslambda.DockerImageFunctionProps
-	SourceCodeModule  string
-	SourceCodeLambda  string
+
+	// Canonical name of Golang module that containing the function
+	//	SourceCodeModule: "github.com/fogfish/scud",
+	SourceCodeModule string
+
+	// Path to lambda function within the module
+	//	SourceCodeLambda:  "test/lambda/go"
+	SourceCodeLambda string
+
+	// The version of software asset passed as linker flag
+	//	-ldflags '-X main.version=...'
 	SourceCodeVersion string
-	StaticAssets      []string
-	GoEnv             map[string]string
-	GoVar             map[string]string
+
+	// Variables and its values passed as linker flags
+	//	-ldflags '-X key1=val1 -X key2=val2 ...'
+	GoVar map[string]string
+
+	// Go environment, default includes
+	//	GOOS=linux
+	//	GOARCH=arm64
+	//	CGO_ENABLED=0
+	GoEnv map[string]string
+
+	// Static files included into container
+	StaticAssets []string
+
+	// Linux Alpine Packages (apk) to be installed within the container
+	Packages []string
 }
 
 func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoProps) awslambda.Function {
@@ -107,14 +129,23 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 		assets = append(assets, fmt.Sprintf("ADD %s /opt/%s", asset, asset))
 	}
 
-	docker := fmt.Sprintf(`
-FROM scratch
+	base := "scratch"
+	pkgs := ""
+	if len(spec.Packages) > 0 {
+		base = "alpine"
+		pkgs = fmt.Sprintf("RUN apk --no-cache add --update %s\n",
+			strings.Join(assets, " "),
+		)
+	}
 
-ADD bootstrap /bin/bootstrap
+	docker := fmt.Sprintf(`
+FROM %s
 %s
+%s
+ADD bootstrap /bin/bootstrap
 
 CMD ["/bin/bootstrap"]
-	`, strings.Join(assets, "\n"))
+	`, base, pkgs, strings.Join(assets, "\n"))
 
 	err := os.WriteFile(filepath.Join(path, "Dockerfile"), []byte(docker), 0664)
 	if err != nil {
