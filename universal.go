@@ -15,7 +15,10 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 )
 
-type FunctionProps interface{ Type(awslambda.Function) }
+type FunctionProps interface {
+	Type(awslambda.Function)
+	Setenv(key, val string)
+}
 
 func NewFunction(scope constructs.Construct, id *string, spec FunctionProps) awslambda.Function {
 	switch prop := spec.(type) {
