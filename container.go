@@ -60,11 +60,15 @@ type ContainerGoProps struct {
 func (*ContainerGoProps) Type(awslambda.Function) {}
 
 func (props *ContainerGoProps) Setenv(key, val string) {
-	if props.Environment == nil {
-		props.Environment = &map[string]*string{}
+	if props.DockerImageFunctionProps == nil {
+		props.DockerImageFunctionProps = &awslambda.DockerImageFunctionProps{}
 	}
 
-	(*props.Environment)[key] = jsii.String(val)
+	if props.DockerImageFunctionProps.Environment == nil {
+		props.DockerImageFunctionProps.Environment = &map[string]*string{}
+	}
+
+	(*props.DockerImageFunctionProps.Environment)[key] = jsii.String(val)
 }
 
 func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoProps) awslambda.Function {

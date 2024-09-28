@@ -8,4 +8,4 @@
 
 package scud
 
-const Version = "v0.10.1"
+const Version = "v0.10.2"
