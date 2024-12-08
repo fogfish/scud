@@ -230,8 +230,9 @@ api := scud.NewGateway(stack, jsii.String("Gateway"),
   &scud.GatewayProps{}
 )
 
-// Cognito pool has to be pre-defined
-api.NewAuthorizerCognito("arn:aws:cognito-idp:...").
+// Cognito pool has to be pre-defined.
+// Supply list of allowed clients to control the access.
+api.NewAuthorizerCognito("arn:aws:cognito-idp:...", /* ... */).
   AddResource("/example", handler, "my/scope")
 ```
 

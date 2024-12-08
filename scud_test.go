@@ -414,7 +414,7 @@ func TestAuthorizerCognito(t *testing.T) {
 	)
 
 	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
-	gw.NewAuthorizerCognito("arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX").
+	gw.NewAuthorizerCognito("arn:aws:cognito-idp:eu-west-1:000000000000:userpool/eu-west-1_XXXXXXXXX", "xxx").
 		AddResource("/test", f, "test")
 
 	require := map[*string]*float64{

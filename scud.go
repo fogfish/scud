@@ -9,6 +9,7 @@
 package scud
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -153,18 +154,32 @@ func (gw *Gateway) NewAuthorizerIAM() *AuthorizerIAM {
 // sign-up, sign-in, and access control mechanisms. The library ensures that
 // only authenticated users with valid tokens can access your API endpoints,
 // providing an additional layer of security and user management capabilities.
-func (gw *Gateway) NewAuthorizerCognito(cognitoArn string) *AuthorizerJwt {
+func (gw *Gateway) NewAuthorizerCognito(cognitoArn string, clients ...string) *AuthorizerJwt {
 	pool := awscognito.UserPool_FromUserPoolArn(
 		gw.Construct,
 		jsii.String("Cognito"),
 		jsii.String(cognitoArn),
 	)
 
+	var allowList *[]awscognito.IUserPoolClient
+	if len(clients) > 0 {
+		al := make([]awscognito.IUserPoolClient, len(clients))
+		for i, id := range clients {
+			al[i] = awscognito.UserPoolClient_FromUserPoolClientId(
+				gw.Construct,
+				jsii.String(fmt.Sprintf("Client%d", i)),
+				jsii.String(id),
+			)
+		}
+		allowList = &al
+	}
+
 	authorizer := authorizers.NewHttpUserPoolAuthorizer(
 		jsii.String("Authorizer"),
 		pool,
 		&authorizers.HttpUserPoolAuthorizerProps{
-			IdentitySource: jsii.Strings("$request.header.Authorization"),
+			IdentitySource:  jsii.Strings("$request.header.Authorization"),
+			UserPoolClients: allowList,
 		},
 	)
 
