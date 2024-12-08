@@ -161,13 +161,17 @@ func (gw *Gateway) NewAuthorizerCognito(cognitoArn string, clients ...string) *A
 		jsii.String(cognitoArn),
 	)
 
-	allow := make([]awscognito.IUserPoolClient, len(clients))
-	for i, id := range clients {
-		allow[i] = awscognito.UserPoolClient_FromUserPoolClientId(
-			gw.Construct,
-			jsii.String(fmt.Sprintf("Client%d", i)),
-			jsii.String(id),
-		)
+	var allowList *[]awscognito.IUserPoolClient
+	if len(clients) > 0 {
+		al := make([]awscognito.IUserPoolClient, len(clients))
+		for i, id := range clients {
+			al[i] = awscognito.UserPoolClient_FromUserPoolClientId(
+				gw.Construct,
+				jsii.String(fmt.Sprintf("Client%d", i)),
+				jsii.String(id),
+			)
+		}
+		allowList = &al
 	}
 
 	authorizer := authorizers.NewHttpUserPoolAuthorizer(
@@ -175,7 +179,7 @@ func (gw *Gateway) NewAuthorizerCognito(cognitoArn string, clients ...string) *A
 		pool,
 		&authorizers.HttpUserPoolAuthorizerProps{
 			IdentitySource:  jsii.Strings("$request.header.Authorization"),
-			UserPoolClients: &allow,
+			UserPoolClients: allowList,
 		},
 	)
 
