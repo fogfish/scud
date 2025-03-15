@@ -59,6 +59,10 @@ type ContainerGoProps struct {
 
 func (*ContainerGoProps) Type(awslambda.Function) {}
 
+func (props *ContainerGoProps) UniqueID() string {
+	return funcName(props.SourceCodeModule, props.SourceCodeLambda)
+}
+
 func (props *ContainerGoProps) Setenv(key, val string) {
 	if props.DockerImageFunctionProps == nil {
 		props.DockerImageFunctionProps = &awslambda.DockerImageFunctionProps{}
@@ -87,7 +91,7 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 
 	if props.FunctionName == nil {
 		props.FunctionName = jsii.String(fmt.Sprintf("%s-%s",
-			*awscdk.Aws_STACK_NAME(), filepath.Base(filepath.Join(spec.SourceCodeModule, spec.SourceCodeLambda))))
+			*awscdk.Aws_STACK_NAME(), funcName(spec.SourceCodeModule, spec.SourceCodeLambda)))
 	}
 
 	// arm64 is default deployment
