@@ -17,6 +17,7 @@ import (
 
 type FunctionProps interface {
 	Type(awslambda.Function)
+	UniqueID() string
 	Setenv(key, val string)
 }
 

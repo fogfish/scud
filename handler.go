@@ -11,6 +11,7 @@ package scud
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
@@ -48,6 +49,10 @@ type FunctionGoProps struct {
 
 func (*FunctionGoProps) Type(awslambda.Function) {}
 
+func (props *FunctionGoProps) UniqueID() string {
+	return funcName(props.SourceCodeModule, props.SourceCodeLambda)
+}
+
 func (props *FunctionGoProps) Setenv(key, val string) {
 	if props.FunctionProps == nil {
 		props.FunctionProps = &awslambda.FunctionProps{}
@@ -77,7 +82,7 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 
 	if props.FunctionName == nil {
 		props.FunctionName = jsii.String(fmt.Sprintf("%s-%s",
-			*awscdk.Aws_STACK_NAME(), filepath.Base(filepath.Join(spec.SourceCodeModule, spec.SourceCodeLambda))))
+			*awscdk.Aws_STACK_NAME(), funcName(spec.SourceCodeModule, spec.SourceCodeLambda)))
 	}
 
 	// arm64 is default deployment
@@ -103,4 +108,51 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 	props.Runtime = awslambda.Runtime_PROVIDED_AL2()
 
 	return awslambda.NewFunction(scope, id, &props)
+}
+
+func funcName(scModule, scLambda string) string {
+	return shorten(filepath.Join(scModule, scLambda))
+}
+
+func shorten(path string) string {
+	seq := strings.Split(path, string(filepath.Separator))
+	if len(seq) == 1 {
+		return path
+	}
+
+	for i := 0; i < len(seq)-1; i++ {
+		seq[i] = shortenSegment(seq[i])
+	}
+	return strings.Join(seq, "")
+}
+
+// shortenSegment heuristically shortens a path segment
+func shortenSegment(segment string) string {
+	length := len(segment)
+	switch {
+	case length <= 3:
+		return segment // Keep short names unchanged
+	case length <= 6:
+		return removeVowels(segment) // Remove vowels from medium-length names
+	default:
+		short := removeVowels(segment)
+		if len(short) > 4 {
+			return short[:4]
+		}
+		return short
+	}
+}
+
+func removeVowels(segment string) string {
+	vowels := "aeiouAEIOU"
+	keep := []rune{}
+	for i, r := range segment {
+		if i == 0 || !strings.ContainsRune(vowels, r) {
+			keep = append(keep, r)
+		}
+	}
+	if len(keep) < 2 { // Ensure at least 2 characters remain
+		return segment
+	}
+	return string(keep)
 }
