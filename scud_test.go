@@ -20,40 +20,6 @@ import (
 	"github.com/fogfish/scud"
 )
 
-func TestFunctionGoProps(t *testing.T) {
-	props := &scud.FunctionGoProps{}
-	props.Setenv("VAR", "val")
-
-	if props.FunctionProps == nil {
-		t.Errorf("Setenv failed")
-	}
-
-	if props.FunctionProps.Environment == nil {
-		t.Errorf("Setenv failed")
-	}
-
-	if _, has := (*props.FunctionProps.Environment)["VAR"]; !has {
-		t.Errorf("Setenv failed")
-	}
-}
-
-func TestContainerGoProps(t *testing.T) {
-	props := &scud.ContainerGoProps{}
-	props.Setenv("VAR", "val")
-
-	if props.DockerImageFunctionProps == nil {
-		t.Errorf("Setenv failed")
-	}
-
-	if props.DockerImageFunctionProps.Environment == nil {
-		t.Errorf("Setenv failed")
-	}
-
-	if _, has := (*props.DockerImageFunctionProps.Environment)["VAR"]; !has {
-		t.Errorf("Setenv failed")
-	}
-}
-
 func TestFunctionGo(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"), nil)

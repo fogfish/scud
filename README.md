@@ -45,6 +45,7 @@ With SCUD, you can deliver fast, secure, and maintainable serverless APIs withou
 - [Quick Start](#quick-start)
 - [Golang Serverless](#golang-serverless)
   - [Linker Flags and Version Injection](#linker-flags-and-version-injection)
+  - [Lambda Environment Variables](#lambda-environment-variables)
   - [Architecture: Graviton vs x86\_64](#architecture-graviton-vs-x86_64)
   - [Container images](#container-images)
   - [Universal Function](#universal-function)
@@ -156,24 +157,23 @@ func main() {
 }
 ```
 
-<!--
 ### Lambda Environment Variables
 
-Both `FunctionGoProps` and `ContainerGoProps` provide a convenient `Setenv` method to set runtime environment variables for your Lambda function:
+Use `awslambda.Function` and its `AddEnvironment` method to set runtime environment variables for your Lambda function:
 
 ```go
-props := &scud.FunctionGoProps{
-  SourceCodeModule: "github.com/fogfish/scud",
-  SourceCodeLambda: "test/lambda/go",
-}
+f := scud.NewFunctionGo(stack, jsii.String("Handler"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda: "test/lambda/go",
+  }
+)
 
 // Set environment variables for the Lambda function
-props.Setenv("DATABASE_URL", "postgresql://...")
-props.Setenv("LOG_LEVEL", "debug")
-
-fun := scud.NewFunctionGo(stack, jsii.String("Handler"), props)
+f.AddEnvironment(jsii.String("DATABASE_URL"), jsii.String("postgresql://..."), nil)
+f.AddEnvironment(jsii.String("LOG_LEVEL"), jsii.String("debug"), nil)
 ```
--->
+
 
 ### Architecture: Graviton vs x86_64
 
