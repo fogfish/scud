@@ -1,7 +1,7 @@
 <p align="center">
   <img src="./doc/scud-logo.png" height="240" />
   <h3 align="center">scud</h3>
-  <p align="center"><strong>simplified serverless api gateway (AWS CDK L3)</strong></p>
+  <p align="center"><strong>serverless Golang made simple, secure, and fast</strong></p>
 
   <p align="center">
     <!-- Version -->
@@ -33,27 +33,26 @@
 
 --- 
 
-`scud` is a Simple Cloud Usable Daemon (API Gateway) designed for serverless RESTful API development. This library is an AWS CDK L3 pattern that handles the infrastructure boilerplate, allowing you to focus on developing application logic.
+`scud` (Serverless Configuration & Utilities for Deployment) is a developer-friendly toolkit for building and deploying secure serverless Golang APIs on AWS.
 
+It simplifies the process of compiling Golang serverless functions as an integral part of the AWS CDK workflow. The resulting Lambda functions are directly consumable by both standard and third-party AWS CDK constructs.
 
-## Inspiration
+SCUD also provides an AWS CDK L3 construct for API Gateway that takes care of the infrastructure boilerplate required for secure serverless RESTful API development.
 
-AWS API Gateway and AWS Lambda is a perfect approach for quick prototyping or production development of microservice on Amazon Web Services. Unfortunately, it requires a boilerplate AWS CDK code to bootstrap the development. This library implements a high-order components on top of AWS CDK that hardens the api pattern
+With SCUD, you can deliver fast, secure, and maintainable serverless APIs without the boilerplate.
 
-![RESTful API Pattern](./doc/scud.excalidraw.svg "RESTful API Pattern")
-
-The library aids in building Lambda functions by:
-* Integrating the "compilation" of Golang serverless functions ("assets") within CDK workflows;
-* Providing validation of OAuth2 Bearer tokens for each API endpoint, using various identity provides (IAM, JWT tokens and AWS Cognito).
-
-- [Inspiration](#inspiration)
 - [Getting started](#getting-started)
-  - [Quick Start](#quick-start)
-- [User Guide](#user-guide)
-  - [Serverless functions](#serverless-functions)
-  - [Serverless functions (arch amd64)](#serverless-functions-arch-amd64)
-  - [Serverless function (Docker container)](#serverless-function-docker-container)
-  - [API Gateway](#api-gateway)
+- [Quick Start](#quick-start)
+- [Golang Serverless](#golang-serverless)
+  - [Linker Flags and Version Injection](#linker-flags-and-version-injection)
+  - [Architecture: Graviton vs x86\_64](#architecture-graviton-vs-x86_64)
+  - [Container images](#container-images)
+  - [Universal Function](#universal-function)
+  - [Custom Go Environment](#custom-go-environment)
+  - [Compressing binaries](#compressing-binaries)
+- [API Gateway](#api-gateway)
+  - [Quick Start](#quick-start-1)
+  - [API Gateway](#api-gateway-1)
   - [API Gateway (Domain Name)](#api-gateway-domain-name)
   - [API Gateway (Resources)](#api-gateway-resources)
   - [Authorizer IAM](#authorizer-iam)
@@ -62,6 +61,7 @@ The library aids in building Lambda functions by:
 - [HowTo Contribute](#howto-contribute)
 - [License](#license)
 - [References](#references)
+
 
 ## Getting started
 
@@ -72,6 +72,215 @@ Use `go get` to retrieve the library and add it as dependency to your applicatio
 ```bash
 go get -u github.com/fogfish/scud
 ```
+
+## Quick Start
+
+Below is a minimal example of deploying a Golang application to AWS Lambda. The key feature here is that the compilation, packaging, and deployment of the function are fully integrated into the `cdk deploy` workflow.
+
+```go
+package main
+
+import (
+  "github.com/aws/aws-cdk-go/awscdk/v2"
+  "github.com/aws/jsii-runtime-go"
+  "github.com/fogfish/scud"
+)
+
+func main() {
+  app := awscdk.NewApp(nil)
+  stack := awscdk.NewStack(app, jsii.String("example"), nil)
+
+  scud.NewFunctionGo(stack, jsii.String("MyFun"),
+    &scud.FunctionGoProps{
+      SourceCodeModule: "github.com/fogfish/scud",
+      SourceCodeLambda: "examples/01_simple_function/lambda",
+    },
+  )
+
+  app.Synth(nil)
+}
+```
+
+## Golang Serverless
+
+AWS CDK has a bundling feature that simplify the process of creating assets for Lambda functions from source code. This feature is useful for compiling and packaging Golang executable binaries into AWS Lambda assets. `scud` implements L3 construct to bundle Golang source code into ARM64 lambdas for Amazon Linux 2 requiring no effort that running `cdk deploy`.
+
+```go
+scud.NewFunctionGo(stack, jsii.String("Handler"),
+  &scud.FunctionGoProps{
+    // Golang module that containing the function
+    SourceCodeModule: "github.com/fogfish/scud",
+    // Path to lambda function within the module 
+    SourceCodeLambda:  "test/lambda/go",
+    // Lambda properties
+    FunctionProps: &awslambda.FunctionProps{},
+  },
+)
+```
+
+The benefit of using this L3 construct is its **optimized deployment strategy**, designed for monorepos that contain many Lambda functions. It automatically detects changes in the source code and deploys **only the Lambda functions that have been modified**, instead of redeploying everything. This makes deployments faster and more efficient, especially in large projects.
+
+
+### Linker Flags and Version Injection
+
+You can inject custom variables and version information into your Go Lambda binary using the `GoVar` and `SourceCodeVersion` properties. These are passed as `-ldflags` to the Go compiler.
+
+```go
+scud.NewFunctionGo(stack, jsii.String("Handler"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda: "test/lambda/go",
+    SourceCodeVersion: "v1.2.3", // Injects -X main.version=v1.2.3
+    GoVar: map[string]string{
+      "main.buildTime": "2024-01-01",  // Injects -X main.buildTime=2024-01-01
+      "main.commit":    "abc123",      // Injects -X main.commit=abc123
+    },
+  },
+)
+```
+
+This allows you to access version and build information in your Lambda function:
+
+```go
+package main
+
+var (
+    version   = "dev"
+    buildTime = "unknown" 
+    commit    = "unknown"
+)
+
+func main() {
+    log.Printf("Version: %s, Build: %s, Commit: %s", version, buildTime, commit)
+    // ... rest of your Lambda code
+}
+```
+
+<!--
+### Lambda Environment Variables
+
+Both `FunctionGoProps` and `ContainerGoProps` provide a convenient `Setenv` method to set runtime environment variables for your Lambda function:
+
+```go
+props := &scud.FunctionGoProps{
+  SourceCodeModule: "github.com/fogfish/scud",
+  SourceCodeLambda: "test/lambda/go",
+}
+
+// Set environment variables for the Lambda function
+props.Setenv("DATABASE_URL", "postgresql://...")
+props.Setenv("LOG_LEVEL", "debug")
+
+fun := scud.NewFunctionGo(stack, jsii.String("Handler"), props)
+```
+-->
+
+### Architecture: Graviton vs x86_64
+
+Graviton (ARM64) is default architecture for lambda function supported by the library. Use standard Golang environment variable `"GOARCH"` to change the default architecture. Pass environment variable using `GoEnv` property:
+
+```go
+scud.NewFunctionGo(scope, jsii.String("test"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda:  "test/lambda/go",
+    GoEnv: map[string]string{"GOARCH": "amd64"},
+  },
+)
+```
+
+
+### Container images
+
+By default, Lambda functions are distributed as ZIP files. The library also supports building and deploying Lambda functions from containers. The provided L3 construct reduces the boilerplate required to define and build such containers, offering a simpler interface compared to the standard AWS CDK `DockerImageCode.fromImageAsset`. It allows you to easily package your executable, include static assets, and install any required packages.
+
+The resulting container is based on either scratch if your code is pure Golang, or Linux Alpine if additional system packages are specified.
+
+```go
+scud.NewContainerGo(stack, jsii.String("test"),
+  &scud.ContainerGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda: "test/lambda/go",
+    StaticAssets: []string{
+      // list of files to be include into container
+      // path is relative to SourceCodeModule
+      // For example 
+      "test/lambda/go/main.go"
+    },
+    Packages: []string{
+      // Additional Linux packages to install
+      "zip", "curl",
+    },
+  },
+)
+```
+
+### Universal Function
+
+For dynamic function creation, you can use the universal `NewFunction` constructor that accepts either `FunctionGoProps` or `ContainerGoProps`:
+
+```go
+// Works with FunctionGoProps
+func1 := scud.NewFunction(stack, jsii.String("func1"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda: "test/lambda/go",
+  },
+)
+
+// Works with ContainerGoProps  
+func2 := scud.NewFunction(stack, jsii.String("func2"),
+  &scud.ContainerGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda: "test/lambda/go",
+  },
+)
+```
+
+### Custom Go Environment
+
+You can set additional Go environment variables for the build process using the `GoEnv` property. The library sets sensible defaults, but you can override them:
+
+```go
+scud.NewFunctionGo(stack, jsii.String("Handler"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda: "test/lambda/go",
+    GoEnv: map[string]string{
+      "GOARCH":      "amd64",           // Override architecture
+      "CGO_ENABLED": "1",               // Enable CGO if needed
+      "GOCACHE":     "/tmp/go-build",   // Custom build cache
+    },
+  },
+)
+```
+
+Default environment variables set by the library:
+- `GOOS=linux`
+- `GOARCH=arm64` 
+- `CGO_ENABLED=0`
+
+
+### Compressing binaries
+
+The L3 constuct uses the `-s` and `-w` linker flags by default to strip the debugging information from binaries. If you have [UPX](https://upx.github.io/) installed, you can enable binary compression by setting the `SCUD_COMPRESS_UPX=1` environment variable before deploying the application. This can significantly reduce the size (almost 7x smaller) of your Lambda deployment package:
+
+```bash
+export SCUD_COMPRESS_UPX=1
+cdk synth
+```
+
+The compression uses UPX with the `--best --lzma` flags for maximum compression.
+See more about compressions:
+* https://words.filippo.io/shrink-your-go-binaries-with-this-one-weird-trick/
+* https://sibprogrammer.medium.com/go-binary-optimization-tricks-648673cc64ac
+
+
+## API Gateway
+
+AWS API Gateway and AWS Lambda are a perfect approach for quick prototyping or production development of microservices on Amazon Web Services. Unfortunately, it requires a significant amount of boilerplate AWS CDK code to bootstrap the development. The `scud` library implements high-order components on top of AWS CDK that harden the API pattern including built-in validation of OAuth2 Bearer tokens for each API endpoint, supporting various identity providers such as IAM, JWT tokens, and AWS Cognito.
+
+![RESTful API Pattern](./doc/scud.excalidraw.svg "RESTful API Pattern")
 
 ### Quick Start
 
@@ -106,62 +315,6 @@ func main() {
   app.Synth(nil)
 }
 ```
-
-See advanced example as [the service blueprint](https://github.com/fogfish/blueprint-serverless-golang) 
-
-
-## User Guide
-
-### Serverless functions
-
-AWS CDK supports a bundling feature that streamlines the process of creating assets for Lambda functions from source code. This feature is particularly useful for compiling and packaging your code in languages such as Golang, which need to be converted from source files into executable binaries. The library simplify bundling thought built in presets for assembling ARM64 lambdas for Amazon Linux 2.
-
-```go
-scud.NewFunctionGo(stack, jsii.String("Handler"),
-  &scud.FunctionGoProps{
-    // Golang module that containing the function
-    SourceCodeModule: "github.com/fogfish/scud",
-    // Path to lambda function within the module 
-    SourceCodeLambda:  "test/lambda/go",
-    // Lambda properties
-    FunctionProps: &awslambda.FunctionProps{},
-  },
-)
-```
-
-### Serverless functions (arch amd64)
-
-ARM64 is default architecture for lambda function. Use `GoEnv` property to build lambda for other architecture.
-
-```go
-scud.NewFunctionGo(scope, jsii.String("test"),
-  &scud.FunctionGoProps{
-    SourceCodeModule: "github.com/fogfish/scud",
-    SourceCodeLambda:  "test/lambda/go",
-    GoEnv: map[string]string{"GOARCH": "amd64"},
-  },
-)
-```
-
-### Serverless function (Docker container)
-
-Zip files is default distribution method for lambda function. The library support building it from containers.
-
-```go
-scud.NewContainerGo(stack, jsii.String("test"),
-  &scud.ContainerGoProps{
-    SourceCodeModule: "github.com/fogfish/scud",
-    SourceCodeLambda: "test/lambda/go",
-    StaticAssets: []string{
-      // list of files to be include into container
-      // path is relative to SourceCodeModule
-      // For example 
-      "test/lambda/go/main.go"
-    },
-  },
-)
-```
-
 
 ### API Gateway 
 
