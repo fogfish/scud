@@ -16,9 +16,8 @@ import (
 )
 
 type FunctionProps interface {
-	Type(awslambda.Function)
+	HKT1(awslambda.Function)
 	UniqueID() string
-	Setenv(key, val string)
 }
 
 func NewFunction(scope constructs.Construct, id *string, spec FunctionProps) awslambda.Function {

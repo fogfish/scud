@@ -9,7 +9,6 @@
 package scud
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -47,22 +46,10 @@ type FunctionGoProps struct {
 	GoEnv map[string]string
 }
 
-func (*FunctionGoProps) Type(awslambda.Function) {}
+func (*FunctionGoProps) HKT1(awslambda.Function) {}
 
 func (props *FunctionGoProps) UniqueID() string {
 	return funcName(props.SourceCodeModule, props.SourceCodeLambda)
-}
-
-func (props *FunctionGoProps) Setenv(key, val string) {
-	if props.FunctionProps == nil {
-		props.FunctionProps = &awslambda.FunctionProps{}
-	}
-
-	if props.FunctionProps.Environment == nil {
-		props.FunctionProps.Environment = &map[string]*string{}
-	}
-
-	(*props.FunctionProps.Environment)[key] = jsii.String(val)
 }
 
 // NewFunctionGo creates Golang Lambda Function from "inline" code
@@ -81,8 +68,7 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 	}
 
 	if props.FunctionName == nil {
-		props.FunctionName = jsii.String(fmt.Sprintf("%s-%s",
-			*awscdk.Aws_STACK_NAME(), funcName(spec.SourceCodeModule, spec.SourceCodeLambda)))
+		props.FunctionName = jsii.Sprintf("%s-%s", *awscdk.Aws_STACK_NAME(), spec.UniqueID())
 	}
 
 	// arm64 is default deployment
