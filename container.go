@@ -73,12 +73,19 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 		props.Timeout = awscdk.Duration_Minutes(jsii.Number(1))
 	}
 
-	if props.LogRetention == "" {
-		props.LogRetention = awslogs.RetentionDays_FIVE_DAYS
-	}
-
 	if props.FunctionName == nil {
 		props.FunctionName = jsii.Sprintf("%s-%s", *awscdk.Aws_STACK_NAME(), spec.UniqueID())
+	}
+
+	if props.LogGroup == nil {
+		// See: https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-loggroups.html
+		props.LogGroup = awslogs.NewLogGroup(scope, jsii.String("LogGroup"),
+			&awslogs.LogGroupProps{
+				LogGroupName:  props.FunctionName,
+				Retention:     awslogs.RetentionDays_FIVE_DAYS,
+				RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
+			},
+		)
 	}
 
 	// arm64 is default deployment

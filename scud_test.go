@@ -32,9 +32,9 @@ func TestFunctionGo(t *testing.T) {
 	)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
-		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
-		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+		jsii.String("AWS::IAM::Role"):        jsii.Number(1),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(1),
+		jsii.String("AWS::Logs::LogGroup"):   jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -67,9 +67,9 @@ func TestFunctionGoArch(t *testing.T) {
 		)
 
 		require := map[*string]*float64{
-			jsii.String("AWS::IAM::Role"):        jsii.Number(2),
-			jsii.String("AWS::Lambda::Function"): jsii.Number(2),
-			jsii.String("Custom::LogRetention"):  jsii.Number(1),
+			jsii.String("AWS::IAM::Role"):        jsii.Number(1),
+			jsii.String("AWS::Lambda::Function"): jsii.Number(1),
+			jsii.String("AWS::Logs::LogGroup"):   jsii.Number(1),
 		}
 
 		template := assertions.Template_FromStack(stack, nil)
@@ -100,9 +100,9 @@ func TestFunctionGoWithProps(t *testing.T) {
 	)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
-		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
-		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+		jsii.String("AWS::IAM::Role"):        jsii.Number(1),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(1),
+		jsii.String("AWS::Logs::LogGroup"):   jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -159,9 +159,9 @@ func TestFunctionGoContainer(t *testing.T) {
 	)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
-		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
-		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+		jsii.String("AWS::IAM::Role"):        jsii.Number(1),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(1),
+		jsii.String("AWS::Logs::LogGroup"):   jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -195,9 +195,9 @@ func TestFunctionGoContainerArch(t *testing.T) {
 		)
 
 		require := map[*string]*float64{
-			jsii.String("AWS::IAM::Role"):        jsii.Number(2),
-			jsii.String("AWS::Lambda::Function"): jsii.Number(2),
-			jsii.String("Custom::LogRetention"):  jsii.Number(1),
+			jsii.String("AWS::IAM::Role"):        jsii.Number(1),
+			jsii.String("AWS::Lambda::Function"): jsii.Number(1),
+			jsii.String("AWS::Logs::LogGroup"):   jsii.Number(1),
 		}
 
 		template := assertions.Template_FromStack(stack, nil)
@@ -225,9 +225,9 @@ func TestUniversalWithFunction(t *testing.T) {
 	)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
-		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
-		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+		jsii.String("AWS::IAM::Role"):        jsii.Number(1),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(1),
+		jsii.String("AWS::Logs::LogGroup"):   jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -248,9 +248,9 @@ func TestUniversalWithContainer(t *testing.T) {
 	)
 
 	require := map[*string]*float64{
-		jsii.String("AWS::IAM::Role"):        jsii.Number(2),
-		jsii.String("AWS::Lambda::Function"): jsii.Number(2),
-		jsii.String("Custom::LogRetention"):  jsii.Number(1),
+		jsii.String("AWS::IAM::Role"):        jsii.Number(1),
+		jsii.String("AWS::Lambda::Function"): jsii.Number(1),
+		jsii.String("AWS::Logs::LogGroup"):   jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -334,7 +334,7 @@ func TestAddResourceDepthPath(t *testing.T) {
 		jsii.String("AWS::ApiGatewayV2::Stage"):       jsii.Number(2),
 		jsii.String("AWS::ApiGatewayV2::Route"):       jsii.Number(2),
 		jsii.String("AWS::ApiGatewayV2::Integration"): jsii.Number(2),
-		jsii.String("AWS::Lambda::Function"):          jsii.Number(2),
+		jsii.String("AWS::Lambda::Function"):          jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
