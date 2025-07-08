@@ -50,6 +50,7 @@ With SCUD, you can deliver fast, secure, and maintainable serverless APIs withou
   - [Container images](#container-images)
   - [Universal Function](#universal-function)
   - [Custom Go Environment](#custom-go-environment)
+  - [Logging](#logging)
   - [Compressing binaries](#compressing-binaries)
 - [API Gateway](#api-gateway)
   - [Quick Start](#quick-start-1)
@@ -260,6 +261,13 @@ Default environment variables set by the library:
 - `GOARCH=arm64` 
 - `CGO_ENABLED=0`
 
+
+### Logging
+
+The L3 construct automatically creates a log group if one is not specified. It is recommended to define a single log group per application and reuse it across all Lambda functions.
+
+> For example, you could use a single log group to store logs for all of the Lambda functions that make up a particular application. 
+- https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-loggroups.html
 
 ### Compressing binaries
 
