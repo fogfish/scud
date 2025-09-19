@@ -128,12 +128,12 @@ func (gw *Gateway) AddResource(
 		},
 	)
 
-	opts := &apigw2.AddRoutesOptions{
-		Path:        jsii.String(endpoint + "/{any+}"),
-		Integration: lambda,
+	for _, path := range []string{endpoint, endpoint + "/{any+}"} {
+		gw.RestAPI.AddRoutes(&apigw2.AddRoutesOptions{
+			Path:        jsii.String(path),
+			Integration: lambda,
+		})
 	}
-
-	gw.RestAPI.AddRoutes(opts)
 }
 
 // Creates integration with AWS IAM to authorize incoming requests.
@@ -238,14 +238,14 @@ func (api *AuthorizerIAM) AddResource(
 		},
 	)
 
-	opts := &apigw2.AddRoutesOptions{
-		Path:        jsii.String(endpoint + "/{any+}"),
-		Integration: lambda,
-		Authorizer:  api.authorizer,
+	for _, path := range []string{endpoint, endpoint + "/{any+}"} {
+		routes := api.RestAPI.AddRoutes(&apigw2.AddRoutesOptions{
+			Path:        jsii.String(path),
+			Integration: lambda,
+			Authorizer:  api.authorizer,
+		})
+		(*routes)[0].GrantInvoke(grantee, nil)
 	}
-
-	routes := api.RestAPI.AddRoutes(opts)
-	(*routes)[0].GrantInvoke(grantee, nil)
 
 	return api
 }
@@ -276,14 +276,14 @@ func (api *AuthorizerJwt) AddResource(
 		},
 	)
 
-	opts := &apigw2.AddRoutesOptions{
-		Path:                jsii.String(endpoint + "/{any+}"),
-		Integration:         lambda,
-		Authorizer:          api.authorizer,
-		AuthorizationScopes: jsii.Strings(accessScope...),
+	for _, path := range []string{endpoint, endpoint + "/{any+}"} {
+		api.RestAPI.AddRoutes(&apigw2.AddRoutesOptions{
+			Path:                jsii.String(path),
+			Integration:         lambda,
+			Authorizer:          api.authorizer,
+			AuthorizationScopes: jsii.Strings(accessScope...),
+		})
 	}
-
-	api.RestAPI.AddRoutes(opts)
 
 	return api
 }
