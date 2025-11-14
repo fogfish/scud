@@ -113,26 +113,56 @@ func (gw *Gateway) createRoute53(host string) *Gateway {
 	return gw
 }
 
-// Associate a Lambda function with a REST API path. It uses the specified
-// path as a prefix, enabling the association of the Lambda function with
-// all subpaths under that prefix.
-func (gw *Gateway) AddResource(
-	endpoint string,
-	handler awslambda.Function,
-) {
-	lambda := integrations.NewHttpLambdaIntegration(
-		jsii.String(filepath.Base(endpoint)),
-		handler,
-		&integrations.HttpLambdaIntegrationProps{
-			PayloadFormatVersion: apigw2.PayloadFormatVersion_VERSION_1_0(),
+// Creates public (unprotected) integration to authorize incoming requests.
+// This integration allows unrestricted access to the associated API endpoints,
+// enabling any client to interact with the resources and functionalities
+// provided by your Lambda functions without requiring authentication or
+// authorization. It is suitable for scenarios where open access is desired,
+// such as public APIs or endpoints that do not handle sensitive data.
+func (gw *Gateway) NewAuthorizerPublic() *AuthorizerPublic {
+	return &AuthorizerPublic{
+		RestAPI: gw.RestAPI,
+	}
+}
+
+// Creates integration with Basic Authorizer to authorize incoming requests.
+// This integration implements a simple access/secret key validation mechanism,
+// allowing you to protect your API endpoints using basic authentication.
+// By validating the provided credentials against the configured access and
+// secret keys, the library ensures that only authorized clients can access
+// your resources, enhancing the security of your API.
+func (gw *Gateway) NewAuthorizerBasic(access, secret string, source ...string) *AuthorizerBasic {
+	src := "$request.header.Authorization"
+	if len(source) > 0 {
+		src = source[0]
+	}
+
+	f := NewFunctionGo(gw.Construct, jsii.String("AuthorizerBasic"),
+		&FunctionGoProps{
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "internal/cmd/auth",
+			FunctionProps: &awslambda.FunctionProps{
+				Timeout: awscdk.Duration_Seconds(jsii.Number(5)),
+				Environment: &map[string]*string{
+					"CONFIG_AUTHORIZER_ACCESS": jsii.String(access),
+					"CONFIG_AUTHORIZER_SECRET": jsii.String(secret),
+					"CONFIG_AUTHORIZER_SOURCE": jsii.String(src),
+				},
+			},
 		},
 	)
 
-	for _, path := range []string{endpoint, endpoint + "/{any+}"} {
-		gw.RestAPI.AddRoutes(&apigw2.AddRoutesOptions{
-			Path:        jsii.String(path),
-			Integration: lambda,
-		})
+	authorizer := authorizers.NewHttpLambdaAuthorizer(jsii.String("LambdaAuthorizer"), f,
+		&authorizers.HttpLambdaAuthorizerProps{
+			IdentitySource: jsii.Strings(src),
+			// Note: enable for debug purposes only
+			ResultsCacheTtl: awscdk.Duration_Seconds(jsii.Number(0)),
+		},
+	)
+
+	return &AuthorizerBasic{
+		RestAPI:    gw.RestAPI,
+		authorizer: authorizer,
 	}
 }
 
@@ -210,6 +240,70 @@ func (gw *Gateway) NewAuthorizerJwt(iss string, aud ...string) *AuthorizerJwt {
 		RestAPI:    gw.RestAPI,
 		authorizer: authorizer,
 	}
+}
+
+//------------------------------------------------------------------------------
+
+type AuthorizerPublic struct {
+	RestAPI apigw2.HttpApi
+}
+
+// Associate a Lambda function with a REST API path. It uses the specified
+// path as a prefix, enabling the association of the Lambda function with
+// all subpaths under that prefix.
+func (api *AuthorizerPublic) AddResource(
+	endpoint string,
+	handler awslambda.Function,
+) *AuthorizerPublic {
+	lambda := integrations.NewHttpLambdaIntegration(
+		jsii.String(filepath.Base(endpoint)),
+		handler,
+		&integrations.HttpLambdaIntegrationProps{
+			PayloadFormatVersion: apigw2.PayloadFormatVersion_VERSION_1_0(),
+		},
+	)
+
+	for _, path := range []string{endpoint, endpoint + "/{any+}"} {
+		api.RestAPI.AddRoutes(&apigw2.AddRoutesOptions{
+			Path:        jsii.String(path),
+			Integration: lambda,
+		})
+	}
+
+	return api
+}
+
+//------------------------------------------------------------------------------
+
+type AuthorizerBasic struct {
+	RestAPI    apigw2.HttpApi
+	authorizer authorizers.HttpLambdaAuthorizer
+}
+
+// Associate a Lambda function with a REST API path. It uses the specified
+// path as a prefix, enabling the association of the Lambda function with
+// all subpaths under that prefix.
+func (api *AuthorizerBasic) AddResource(
+	endpoint string,
+	handler awslambda.Function,
+) *AuthorizerBasic {
+	lambda := integrations.NewHttpLambdaIntegration(
+		jsii.String(filepath.Base(endpoint)),
+		handler,
+		&integrations.HttpLambdaIntegrationProps{
+			PayloadFormatVersion: apigw2.PayloadFormatVersion_VERSION_1_0(),
+		},
+	)
+
+	for _, path := range []string{endpoint, endpoint + "/{any+}"} {
+		api.RestAPI.AddRoutes(&apigw2.AddRoutesOptions{
+			Path:        jsii.String(path),
+			Integration: lambda,
+			Authorizer:  api.authorizer,
+		})
+	}
+
+	return api
 }
 
 //------------------------------------------------------------------------------

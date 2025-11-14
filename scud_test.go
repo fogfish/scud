@@ -299,7 +299,8 @@ func TestAddResource(t *testing.T) {
 	)
 
 	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
-	gw.AddResource("/test", f)
+	pub := gw.NewAuthorizerPublic()
+	pub.AddResource("/test", f)
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Api"):         jsii.Number(1),
@@ -326,8 +327,9 @@ func TestAddResourceDepthPath(t *testing.T) {
 	)
 
 	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
-	gw.AddResource("/test/1", f)
-	gw.AddResource("/test/2", f)
+	pub := gw.NewAuthorizerPublic()
+	pub.AddResource("/test/1", f)
+	pub.AddResource("/test/2", f)
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Api"):         jsii.Number(1),
@@ -406,6 +408,31 @@ func TestAuthorizerJwt(t *testing.T) {
 
 	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
 	gw.NewAuthorizerJwt("iss", "aud").
+		AddResource("/test", f)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::ApiGatewayV2::Authorizer"): jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
+func TestAuthorizerBasic(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	f := scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
+		},
+	)
+
+	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
+	gw.NewAuthorizerBasic("username", "password").
 		AddResource("/test", f)
 
 	require := map[*string]*float64{

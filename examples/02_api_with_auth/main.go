@@ -31,7 +31,12 @@ func main() {
 	)
 
 	// Public endpoint
-	gw.AddResource("/public", f)
+	gw.NewAuthorizerPublic().
+		AddResource("/public", f)
+
+	// Basic authorization
+	gw.NewAuthorizerBasic("access", "secret").
+		AddResource("/private/apikey/hw", f)
 
 	// IAM authorization
 	gw.NewAuthorizerIAM().
