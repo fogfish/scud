@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-lambda-go v1.50.0
 	github.com/aws/constructs-go/constructs/v10 v10.4.3
 	github.com/aws/jsii-runtime-go v1.119.0
+	github.com/fogfish/it/v2 v2.2.4
 )
 
 require (
