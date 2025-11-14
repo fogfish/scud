@@ -299,7 +299,8 @@ func TestAddResource(t *testing.T) {
 	)
 
 	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
-	gw.AddResource("/test", f)
+	pub := gw.NewAuthorizerPublic()
+	pub.AddResource("/test", f)
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Api"):         jsii.Number(1),
@@ -326,8 +327,9 @@ func TestAddResourceDepthPath(t *testing.T) {
 	)
 
 	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
-	gw.AddResource("/test/1", f)
-	gw.AddResource("/test/2", f)
+	pub := gw.NewAuthorizerPublic()
+	pub.AddResource("/test/1", f)
+	pub.AddResource("/test/2", f)
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Api"):         jsii.Number(1),
