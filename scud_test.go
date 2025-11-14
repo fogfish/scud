@@ -420,6 +420,31 @@ func TestAuthorizerJwt(t *testing.T) {
 	}
 }
 
+func TestAuthorizerBasic(t *testing.T) {
+	app := awscdk.NewApp(nil)
+	stack := awscdk.NewStack(app, jsii.String("Test"), nil)
+
+	f := scud.NewFunctionGo(stack, jsii.String("test"),
+		&scud.FunctionGoProps{
+			SourceCodeModule: "github.com/fogfish/scud",
+			SourceCodeLambda: "test/lambda/go",
+		},
+	)
+
+	gw := scud.NewGateway(stack, jsii.String("GW"), &scud.GatewayProps{})
+	gw.NewAuthorizerBasic("username", "password").
+		AddResource("/test", f)
+
+	require := map[*string]*float64{
+		jsii.String("AWS::ApiGatewayV2::Authorizer"): jsii.Number(1),
+	}
+
+	template := assertions.Template_FromStack(stack, nil)
+	for key, val := range require {
+		template.ResourceCountIs(key, val)
+	}
+}
+
 func TestConfigRoute53(t *testing.T) {
 	app := awscdk.NewApp(nil)
 	stack := awscdk.NewStack(app, jsii.String("Test"),
