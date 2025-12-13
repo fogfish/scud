@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./doc/scud-logo.png" height="240" />
+  <img src="./doc/scud-logo-v2.svg" height="240" />
   <h3 align="center">scud</h3>
   <p align="center"><strong>serverless Golang made simple, secure, and fast</strong></p>
 
@@ -47,6 +47,7 @@ With SCUD, you can deliver fast, secure, and maintainable serverless APIs withou
   - [Linker Flags and Version Injection](#linker-flags-and-version-injection)
   - [Lambda Environment Variables](#lambda-environment-variables)
   - [Architecture: Graviton vs x86\_64](#architecture-graviton-vs-x86_64)
+  - [CGO / C Libraries](#cgo--c-libraries)
   - [Container images](#container-images)
   - [Universal Function](#universal-function)
   - [Custom Go Environment](#custom-go-environment)
@@ -133,9 +134,11 @@ scud.NewFunctionGo(stack, jsii.String("Handler"),
     SourceCodeModule: "github.com/fogfish/scud",
     SourceCodeLambda: "test/lambda/go",
     SourceCodeVersion: "v1.2.3", // Injects -X main.version=v1.2.3
-    GoVar: map[string]string{
-      "main.buildTime": "2024-01-01",  // Injects -X main.buildTime=2024-01-01
-      "main.commit":    "abc123",      // Injects -X main.commit=abc123
+    Toolchain: &scud.Toolchain{
+      LDVars:: map[string]string{
+        "main.buildTime": "2024-01-01",  // Injects -X main.buildTime=2024-01-01
+        "main.commit":    "abc123",      // Injects -X main.commit=abc123
+      },
     },
   },
 )
@@ -185,11 +188,55 @@ scud.NewFunctionGo(scope, jsii.String("test"),
   &scud.FunctionGoProps{
     SourceCodeModule: "github.com/fogfish/scud",
     SourceCodeLambda:  "test/lambda/go",
-    GoEnv: map[string]string{"GOARCH": "amd64"},
+    Toolchain: &scud.Toolchain{
+      GoEnv: map[string]string{"GOARCH": "amd64"},
+    },
   },
 )
 ```
 
+### CGO / C Libraries
+
+CGO is disabled by default. Use standard Golang environment variable `"CGO_ENABLED"` to enable.
+
+```go
+scud.NewFunctionGo(scope, jsii.String("test"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda:  "test/lambda/go",
+    Toolchain: &scud.Toolchain{
+      GoEnv: map[string]string{"CGO_ENABLED": "1"},
+    },
+  },
+)
+```
+
+When developing on macOS, building Go binaries that depend on CGO or C libraries may fail or produce incompatible artifacts. Use a Linux cross-compiler (e.g. musl toolchain).
+
+```bash
+brew install FiloSottile/musl-cross/musl-cross
+```
+
+```go
+scud.NewFunctionGo(scope, jsii.String("test"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda:  "test/lambda/go",
+    Toolchain: &scud.Toolchain{
+      GoEnv: map[string]string{
+        "CGO_ENABLED": "1",
+        "CC":          "aarch64-linux-musl-gcc",
+      },
+      LDVars: []string{"-linkmode external", `-extldflags "-static"`},
+    },
+  },
+)
+```
+
+Known limitations
+* Some C libraries cannot be statically linked
+* Libraries that require glibc may not build correctly on macOS
+* In such cases, builds must be performed on a Linux system
 
 ### Container images
 

@@ -57,11 +57,13 @@ func TestFunctionGoArch(t *testing.T) {
 				SourceCodeModule:  "github.com/fogfish/scud",
 				SourceCodeLambda:  "test/lambda/go",
 				SourceCodeVersion: "v1.2.3",
-				GoEnv: map[string]string{
-					"GOARCH": arch,
-				},
-				GoVar: map[string]string{
-					"main.some": "1.2.3",
+				Toolchain: &scud.Toolchain{
+					GoEnv: map[string]string{
+						"GOARCH": arch,
+					},
+					LDVars: map[string]string{
+						"main.some": "1.2.3",
+					},
 				},
 			},
 		)
@@ -185,11 +187,13 @@ func TestFunctionGoContainerArch(t *testing.T) {
 				SourceCodeModule:         "github.com/fogfish/scud",
 				SourceCodeLambda:         "test/lambda/go",
 				SourceCodeVersion:        "v1.2.3",
-				GoEnv: map[string]string{
-					"GOARCH": arch,
-				},
-				GoVar: map[string]string{
-					"main.some": "1.2.3",
+				Toolchain: &scud.Toolchain{
+					GoEnv: map[string]string{
+						"GOARCH": arch,
+					},
+					LDVars: map[string]string{
+						"main.some": "1.2.3",
+					},
 				},
 			},
 		)

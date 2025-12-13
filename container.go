@@ -40,15 +40,8 @@ type ContainerGoProps struct {
 	//	-ldflags '-X main.version=...'
 	SourceCodeVersion string
 
-	// Variables and its values passed as linker flags
-	//	-ldflags '-X key1=val1 -X key2=val2 ...'
-	GoVar map[string]string
-
-	// Go environment, default includes
-	//	GOOS=linux
-	//	GOARCH=arm64
-	//	CGO_ENABLED=0
-	GoEnv map[string]string
+	// Toolchain configuration for building Go Lambda function
+	Toolchain *Toolchain
 
 	// Static files included into container, the path is relative to module
 	StaticAssets []string
@@ -92,8 +85,8 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 	platContainer := "linux/arm64"
 	platCode := awsecrassets.Platform_LINUX_ARM64()
 	props.Architecture = awslambda.Architecture_ARM_64()
-	if spec.GoEnv != nil {
-		switch spec.GoEnv["GOARCH"] {
+	if spec.Toolchain != nil && spec.Toolchain.GoEnv != nil {
+		switch spec.Toolchain.GoEnv["GOARCH"] {
 		case "amd64":
 			platContainer = "linux/amd64"
 			props.Architecture = awslambda.Architecture_X86_64()
@@ -109,8 +102,7 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 		spec.SourceCodeModule,
 		spec.SourceCodeLambda,
 		spec.SourceCodeVersion,
-		spec.GoVar,
-		spec.GoEnv,
+		spec.Toolchain,
 	)
 
 	path := filepath.Join(os.TempDir(), spec.SourceCodeModule, spec.SourceCodeLambda)
