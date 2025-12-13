@@ -35,15 +35,8 @@ type FunctionGoProps struct {
 	//	-ldflags '-X main.version=...'
 	SourceCodeVersion string
 
-	// Variables and its values passed as linker flags
-	//	-ldflags '-X key1=val1 -X key2=val2 ...'
-	GoVar map[string]string
-
-	// Go environment, default includes
-	//	GOOS=linux
-	//	GOARCH=arm64
-	//	CGO_ENABLED=0
-	GoEnv map[string]string
+	// Toolchain configuration for building Go Lambda function
+	Toolchain *Toolchain
 }
 
 func (*FunctionGoProps) HKT1(awslambda.Function) {}
@@ -80,8 +73,8 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 
 	// arm64 is default deployment
 	props.Architecture = awslambda.Architecture_ARM_64()
-	if spec.GoEnv != nil {
-		switch spec.GoEnv["GOARCH"] {
+	if spec.Toolchain != nil && spec.Toolchain.GoEnv != nil {
+		switch spec.Toolchain.GoEnv["GOARCH"] {
 		case "amd64":
 			props.Architecture = awslambda.Architecture_X86_64()
 		case "arm64":
@@ -93,8 +86,7 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 		spec.SourceCodeModule,
 		spec.SourceCodeLambda,
 		spec.SourceCodeVersion,
-		spec.GoVar,
-		spec.GoEnv,
+		spec.Toolchain,
 	)
 	props.Code = AssetCodeGo(gocc)
 	props.Handler = jsii.String(goBinary)

@@ -14,13 +14,28 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
+// Configure Go compiler and Linter
+type Toolchain struct {
+	// Go environment, default includes
+	//	GOOS=linux
+	//	GOARCH=arm64
+	//	CGO_ENABLED=0
+	GoEnv map[string]string
+
+	// Linker flags passed to the Go linker (-ldflags).
+	LDFlags []string
+
+	// Go variables injected at link time using -X key=value.
+	// Example: -ldflags "-X main.version=1.0.0"
+	LDVars map[string]string
+}
+
 type GoCompiler struct {
 	sourceCode        string
 	sourceCodePackage string
 	sourceCodeLambda  string
 	sourceCodeVersion string
-	govar             map[string]string
-	goenv             map[string]string
+	config            *Toolchain
 }
 
 const goBinary = "bootstrap"
@@ -29,15 +44,14 @@ func NewGoCompiler(
 	sourceCodePackage string,
 	sourceCodeLambda string,
 	sourceCodeVersion string,
-	govar map[string]string,
-	goenv map[string]string,
+	config *Toolchain,
 ) *GoCompiler {
-	if goenv == nil {
-		goenv = map[string]string{}
-	}
-
-	if govar == nil {
-		govar = map[string]string{}
+	if config == nil {
+		config = &Toolchain{
+			GoEnv:   map[string]string{},
+			LDVars:  map[string]string{},
+			LDFlags: []string{},
+		}
 	}
 
 	return &GoCompiler{
@@ -45,8 +59,7 @@ func NewGoCompiler(
 		sourceCodePackage: sourceCodePackage,
 		sourceCodeLambda:  sourceCodeLambda,
 		sourceCodeVersion: sourceCodeVersion,
-		govar:             govar,
-		goenv:             goenv,
+		config:            config,
 	}
 }
 
@@ -61,11 +74,14 @@ func (g *GoCompiler) TryBundle(outputDir *string, options *awscdk.BundlingOption
 	goflags := []string{"build", "-tags", "lambda.norpc"}
 
 	ldflags := []string{"-s", "-w"}
+	if len(g.config.LDFlags) > 0 {
+		ldflags = append(ldflags, g.config.LDFlags...)
+	}
 	if g.sourceCodeVersion != "" {
 		ldflags = append(ldflags, fmt.Sprintf("-X main.version=%s", g.sourceCodeVersion))
 	}
 
-	for name, value := range g.govar {
+	for name, value := range g.config.LDVars {
 		ldflags = append(ldflags, fmt.Sprintf("-X %s=%s", name, value))
 	}
 	goflags = append(goflags, "-ldflags", strings.Join(ldflags, " "))
@@ -117,8 +133,8 @@ func (g *GoCompiler) cmdEnv() []string {
 		"GOROOT",
 		"GOMODCACHE",
 	} {
-		if _, exists := g.goenv[envvar]; !exists {
-			g.goenv[envvar] = os.Getenv(envvar)
+		if _, exists := g.config.GoEnv[envvar]; !exists {
+			g.config.GoEnv[envvar] = os.Getenv(envvar)
 		}
 	}
 
@@ -127,21 +143,21 @@ func (g *GoCompiler) cmdEnv() []string {
 		"GOARCH":      "arm64",
 		"CGO_ENABLED": "0",
 	} {
-		if _, exists := g.goenv[envvar]; !exists {
-			g.goenv[envvar] = defval
+		if _, exists := g.config.GoEnv[envvar]; !exists {
+			g.config.GoEnv[envvar] = defval
 		}
 	}
 
 	for envvar, gen := range map[string]func() string{
 		"GOCACHE": g.goCache,
 	} {
-		if _, exists := g.goenv[envvar]; !exists {
-			g.goenv[envvar] = gen()
+		if _, exists := g.config.GoEnv[envvar]; !exists {
+			g.config.GoEnv[envvar] = gen()
 		}
 	}
 
 	env := make([]string, 0)
-	for key, val := range g.goenv {
+	for key, val := range g.config.GoEnv {
 		env = append(env, key+"="+val)
 	}
 	return env
