@@ -43,10 +43,16 @@ type ContainerGoProps struct {
 	// Toolchain configuration for building Go Lambda function
 	Toolchain *Toolchain
 
+	// Path to Dockerfile relative to the module,
+	// if not specified, the default Dockerfile will be generated
+	Dockerfile string
+
 	// Static files included into container, the path is relative to module
+	// Only added to container if Dockerfile is not specified, otherwise it's caller responsibility to add them into container within Dockerfile
 	StaticAssets []string
 
 	// Linux Alpine Packages (apk) to be installed within the container
+	// Only added to container if Dockerfile is not specified, otherwise it's caller responsibility to add them into container within Dockerfile
 	Packages []string
 }
 
@@ -115,7 +121,15 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 		panic(fmt.Errorf("unable to build %s/%s", spec.SourceCodeModule, spec.SourceCodeLambda))
 	}
 
-	docker := fmt.Sprintf(`
+	if spec.Dockerfile != "" {
+		source := filepath.Join(rootSourceCode(spec.SourceCodeModule), spec.Dockerfile)
+		target := filepath.Join(path, "Dockerfile")
+		log.Printf("==> copy %s\n", spec.Dockerfile)
+		if err := copy(source, target); err != nil {
+			panic(err)
+		}
+	} else {
+		docker := fmt.Sprintf(`
 FROM %s
 %s
 %s
@@ -124,9 +138,10 @@ ADD bootstrap /bin/bootstrap
 CMD ["/bin/bootstrap"]
 	`, dockerBaseImage(spec), dockerPackages(spec), dockerAssets(path, spec))
 
-	err := os.WriteFile(filepath.Join(path, "Dockerfile"), []byte(docker), 0664)
-	if err != nil {
-		panic(err)
+		err := os.WriteFile(filepath.Join(path, "Dockerfile"), []byte(docker), 0664)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	props.Code = awslambda.DockerImageCode_FromImageAsset(
