@@ -44,7 +44,11 @@ type ContainerGoProps struct {
 	Toolchain *Toolchain
 
 	// Path to Dockerfile relative to the module,
-	// if not specified, the default Dockerfile will be generated
+	// if not specified, the default Dockerfile will be generated.
+	//
+	// The file must contain:
+	// ADD bootstrap /bin/bootstrap
+	// CMD ["/bin/bootstrap"]
 	Dockerfile string
 
 	// Static files included into container, the path is relative to module
