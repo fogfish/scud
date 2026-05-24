@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
 	apigw2 "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
 	authorizers "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2authorizers"
 	integrations "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2integrations"
@@ -42,6 +41,15 @@ type Gateway struct {
 	aRecord awsroute53.ARecord
 }
 
+var httpMethods = &[]apigw2.HttpMethod{
+	apigw2.HttpMethod_GET,
+	apigw2.HttpMethod_HEAD,
+	apigw2.HttpMethod_PATCH,
+	apigw2.HttpMethod_POST,
+	apigw2.HttpMethod_PUT,
+	apigw2.HttpMethod_DELETE,
+}
+
 // NewGateway creates new instance of Gateway
 func NewGateway(scope constructs.Construct, id *string, props *GatewayProps) *Gateway {
 	gw := &Gateway{Construct: constructs.NewConstruct(scope, id)}
@@ -55,8 +63,13 @@ func NewGateway(scope constructs.Construct, id *string, props *GatewayProps) *Ga
 
 	if props.HttpApiProps.CorsPreflight == nil {
 		props.CorsPreflight = &apigw2.CorsPreflightOptions{
-			AllowOrigins: awsapigateway.Cors_ALL_ORIGINS(),
-			MaxAge:       awscdk.Duration_Minutes(jsii.Number(10)),
+			AllowOrigins: jsii.Strings("*"),
+			AllowMethods: &[]apigw2.CorsHttpMethod{apigw2.CorsHttpMethod_ANY},
+			AllowHeaders: jsii.Strings(
+				"Authorization",
+				"Content-Type",
+			),
+			MaxAge: awscdk.Duration_Minutes(jsii.Number(10)),
 		}
 	}
 
@@ -267,6 +280,7 @@ func (api *AuthorizerPublic) AddResource(
 		api.RestAPI.AddRoutes(&apigw2.AddRoutesOptions{
 			Path:        jsii.String(path),
 			Integration: lambda,
+			Methods:     httpMethods,
 		})
 	}
 
@@ -300,6 +314,7 @@ func (api *AuthorizerBasic) AddResource(
 			Path:        jsii.String(path),
 			Integration: lambda,
 			Authorizer:  api.authorizer,
+			Methods:     httpMethods,
 		})
 	}
 
@@ -337,6 +352,7 @@ func (api *AuthorizerIAM) AddResource(
 			Path:        jsii.String(path),
 			Integration: lambda,
 			Authorizer:  api.authorizer,
+			Methods:     httpMethods,
 		})
 		(*routes)[0].GrantInvoke(grantee, nil)
 	}
@@ -376,6 +392,7 @@ func (api *AuthorizerJwt) AddResource(
 			Integration:         lambda,
 			Authorizer:          api.authorizer,
 			AuthorizationScopes: jsii.Strings(accessScope...),
+			Methods:             httpMethods,
 		})
 	}
 
