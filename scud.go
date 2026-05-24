@@ -30,8 +30,9 @@ import (
 
 type GatewayProps struct {
 	*apigw2.HttpApiProps
-	Host   *string
-	TlsArn *string
+	Host         *string
+	TlsArn       *string
+	AllowOrigins *string
 }
 
 type Gateway struct {
@@ -39,15 +40,7 @@ type Gateway struct {
 	RestAPI apigw2.HttpApi
 	domain  apigw2.DomainName
 	aRecord awsroute53.ARecord
-}
-
-var httpMethods = &[]apigw2.HttpMethod{
-	apigw2.HttpMethod_GET,
-	apigw2.HttpMethod_HEAD,
-	apigw2.HttpMethod_PATCH,
-	apigw2.HttpMethod_POST,
-	apigw2.HttpMethod_PUT,
-	apigw2.HttpMethod_DELETE,
+	methods *[]apigw2.HttpMethod
 }
 
 // NewGateway creates new instance of Gateway
@@ -61,15 +54,26 @@ func NewGateway(scope constructs.Construct, id *string, props *GatewayProps) *Ga
 		props.ApiName = awscdk.Aws_STACK_NAME()
 	}
 
-	if props.HttpApiProps.CorsPreflight == nil {
+	if props.HttpApiProps.CorsPreflight == nil && props.AllowOrigins != nil {
 		props.CorsPreflight = &apigw2.CorsPreflightOptions{
-			AllowOrigins: jsii.Strings("*"),
+			AllowOrigins: &[]*string{props.AllowOrigins},
 			AllowMethods: &[]apigw2.CorsHttpMethod{apigw2.CorsHttpMethod_ANY},
 			AllowHeaders: jsii.Strings(
 				"Authorization",
 				"Content-Type",
 			),
 			MaxAge: awscdk.Duration_Minutes(jsii.Number(10)),
+		}
+	}
+
+	if props.HttpApiProps.CorsPreflight != nil {
+		gw.methods = &[]apigw2.HttpMethod{
+			apigw2.HttpMethod_GET,
+			apigw2.HttpMethod_HEAD,
+			apigw2.HttpMethod_PATCH,
+			apigw2.HttpMethod_POST,
+			apigw2.HttpMethod_PUT,
+			apigw2.HttpMethod_DELETE,
 		}
 	}
 
@@ -135,6 +139,7 @@ func (gw *Gateway) createRoute53(host string) *Gateway {
 func (gw *Gateway) NewAuthorizerPublic() *AuthorizerPublic {
 	return &AuthorizerPublic{
 		RestAPI: gw.RestAPI,
+		methods: gw.methods,
 	}
 }
 
@@ -176,6 +181,7 @@ func (gw *Gateway) NewAuthorizerBasic(access, secret string, source ...string) *
 	return &AuthorizerBasic{
 		RestAPI:    gw.RestAPI,
 		authorizer: authorizer,
+		methods:    gw.methods,
 	}
 }
 
@@ -188,6 +194,7 @@ func (gw *Gateway) NewAuthorizerIAM() *AuthorizerIAM {
 	return &AuthorizerIAM{
 		RestAPI:    gw.RestAPI,
 		authorizer: authorizers.NewHttpIamAuthorizer(),
+		methods:    gw.methods,
 	}
 }
 
@@ -229,6 +236,7 @@ func (gw *Gateway) NewAuthorizerCognito(cognitoArn string, clients ...string) *A
 	return &AuthorizerJwt{
 		RestAPI:    gw.RestAPI,
 		authorizer: authorizer,
+		methods:    gw.methods,
 	}
 }
 
@@ -252,6 +260,7 @@ func (gw *Gateway) NewAuthorizerJwt(iss string, aud ...string) *AuthorizerJwt {
 	return &AuthorizerJwt{
 		RestAPI:    gw.RestAPI,
 		authorizer: authorizer,
+		methods:    gw.methods,
 	}
 }
 
@@ -259,6 +268,7 @@ func (gw *Gateway) NewAuthorizerJwt(iss string, aud ...string) *AuthorizerJwt {
 
 type AuthorizerPublic struct {
 	RestAPI apigw2.HttpApi
+	methods *[]apigw2.HttpMethod
 }
 
 // Associate a Lambda function with a REST API path. It uses the specified
@@ -280,7 +290,7 @@ func (api *AuthorizerPublic) AddResource(
 		api.RestAPI.AddRoutes(&apigw2.AddRoutesOptions{
 			Path:        jsii.String(path),
 			Integration: lambda,
-			Methods:     httpMethods,
+			Methods:     api.methods,
 		})
 	}
 
@@ -292,6 +302,7 @@ func (api *AuthorizerPublic) AddResource(
 type AuthorizerBasic struct {
 	RestAPI    apigw2.HttpApi
 	authorizer authorizers.HttpLambdaAuthorizer
+	methods    *[]apigw2.HttpMethod
 }
 
 // Associate a Lambda function with a REST API path. It uses the specified
@@ -314,7 +325,7 @@ func (api *AuthorizerBasic) AddResource(
 			Path:        jsii.String(path),
 			Integration: lambda,
 			Authorizer:  api.authorizer,
-			Methods:     httpMethods,
+			Methods:     api.methods,
 		})
 	}
 
@@ -327,6 +338,7 @@ type AuthorizerIAM struct {
 	constructs.Construct
 	RestAPI    apigw2.HttpApi
 	authorizer apigw2.IHttpRouteAuthorizer
+	methods    *[]apigw2.HttpMethod
 }
 
 // Associate a Lambda function with a REST API path. It uses the specified
@@ -352,7 +364,7 @@ func (api *AuthorizerIAM) AddResource(
 			Path:        jsii.String(path),
 			Integration: lambda,
 			Authorizer:  api.authorizer,
-			Methods:     httpMethods,
+			Methods:     api.methods,
 		})
 		(*routes)[0].GrantInvoke(grantee, nil)
 	}
@@ -366,6 +378,7 @@ type AuthorizerJwt struct {
 	constructs.Construct
 	RestAPI    apigw2.HttpApi
 	authorizer apigw2.IHttpRouteAuthorizer
+	methods    *[]apigw2.HttpMethod
 }
 
 // Associate a Lambda function with a REST API path. It uses the specified
@@ -392,7 +405,7 @@ func (api *AuthorizerJwt) AddResource(
 			Integration:         lambda,
 			Authorizer:          api.authorizer,
 			AuthorizationScopes: jsii.Strings(accessScope...),
-			Methods:             httpMethods,
+			Methods:             api.methods,
 		})
 	}
 
