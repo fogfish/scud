@@ -90,7 +90,7 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 	)
 	props.Code = AssetCodeGo(gocc)
 	props.Handler = jsii.String(goBinary)
-	props.Runtime = awslambda.Runtime_PROVIDED_AL2()
+	props.Runtime = awslambda.Runtime_PROVIDED_AL2023()
 
 	return awslambda.NewFunction(scope, id, &props)
 }
