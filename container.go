@@ -17,10 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsecrassets"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -72,23 +70,24 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 		props = *spec.DockerImageFunctionProps
 	}
 
+	defaults := defaultsOf(scope)
+
 	if props.Timeout == nil {
-		props.Timeout = awscdk.Duration_Minutes(jsii.Number(1))
+		props.Timeout = defaults.timeout()
+	}
+
+	if props.MemorySize == nil {
+		props.MemorySize = defaults.MemorySize
 	}
 
 	if props.FunctionName == nil {
-		props.FunctionName = jsii.Sprintf("%s-%s", *awscdk.Aws_STACK_NAME(), spec.UniqueID())
+		props.FunctionName = defaultFunctionName(scope, spec.UniqueID())
+	} else {
+		checkFunctionName(props.FunctionName)
 	}
 
 	if props.LogGroup == nil {
-		// See: https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-loggroups.html
-		props.LogGroup = awslogs.NewLogGroup(scope, jsii.String("LogGroup"),
-			&awslogs.LogGroupProps{
-				LogGroupName:  props.FunctionName,
-				Retention:     awslogs.RetentionDays_FIVE_DAYS,
-				RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-			},
-		)
+		props.LogGroup = defaults.logGroup(scope, "LogGroup", props.FunctionName)
 	}
 
 	// arm64 is default deployment

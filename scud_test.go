@@ -277,7 +277,7 @@ func TestCreateGateway(t *testing.T) {
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Api"):   jsii.Number(1),
-		jsii.String("AWS::ApiGatewayV2::Stage"): jsii.Number(2),
+		jsii.String("AWS::ApiGatewayV2::Stage"): jsii.Number(1),
 	}
 
 	template := assertions.Template_FromStack(stack, nil)
@@ -308,7 +308,7 @@ func TestAddResource(t *testing.T) {
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Api"):         jsii.Number(1),
-		jsii.String("AWS::ApiGatewayV2::Stage"):       jsii.Number(2),
+		jsii.String("AWS::ApiGatewayV2::Stage"):       jsii.Number(1),
 		jsii.String("AWS::ApiGatewayV2::Route"):       jsii.Number(2),
 		jsii.String("AWS::ApiGatewayV2::Integration"): jsii.Number(1),
 	}
@@ -337,7 +337,7 @@ func TestAddResourceDepthPath(t *testing.T) {
 
 	require := map[*string]*float64{
 		jsii.String("AWS::ApiGatewayV2::Api"):         jsii.Number(1),
-		jsii.String("AWS::ApiGatewayV2::Stage"):       jsii.Number(2),
+		jsii.String("AWS::ApiGatewayV2::Stage"):       jsii.Number(1),
 		jsii.String("AWS::ApiGatewayV2::Route"):       jsii.Number(4),
 		jsii.String("AWS::ApiGatewayV2::Integration"): jsii.Number(2),
 		jsii.String("AWS::Lambda::Function"):          jsii.Number(1),

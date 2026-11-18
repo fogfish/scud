@@ -24,10 +24,6 @@
     <a href="https://coveralls.io/github/fogfish/scud?branch=main">
       <img src="https://coveralls.io/repos/github/fogfish/scud/badge.svg?branch=main" />
     </a>
-    <!-- Go Card -->
-    <a href="https://goreportcard.com/report/github.com/fogfish/scud">
-      <img src="https://goreportcard.com/badge/github.com/fogfish/scud" />
-    </a>
   </p>
 </p>
 
@@ -51,6 +47,9 @@ With SCUD, you can deliver fast, secure, and maintainable serverless APIs withou
   - [Container images](#container-images)
   - [Universal Function](#universal-function)
   - [Custom Go Environment](#custom-go-environment)
+  - [Change Detection](#change-detection)
+  - [Function Defaults](#function-defaults)
+  - [Tenant Isolation](#tenant-isolation)
   - [Logging](#logging)
   - [Compressing binaries](#compressing-binaries)
 - [API Gateway](#api-gateway)
@@ -58,9 +57,15 @@ With SCUD, you can deliver fast, secure, and maintainable serverless APIs withou
   - [API Gateway](#api-gateway-1)
   - [API Gateway (Domain Name)](#api-gateway-domain-name)
   - [API Gateway (Resources)](#api-gateway-resources)
+  - [API Gateway (Routes)](#api-gateway-routes)
+  - [Payload Format](#payload-format)
   - [Authorizer IAM](#authorizer-iam)
   - [Authorizer AWS Cognito](#authorizer-aws-cognito)
   - [Authorizer JWT](#authorizer-jwt)
+  - [Authorizer Lambda](#authorizer-lambda)
+  - [Stage: Throttling and Access Logs](#stage-throttling-and-access-logs)
+  - [CORS](#cors)
+  - [Stable Alias of Versioned API](#stable-alias-of-versioned-api)
 - [HowTo Contribute](#howto-contribute)
 - [License](#license)
 - [References](#references)
@@ -308,6 +313,56 @@ Default environment variables set by the library:
 - `GOARCH=arm64` 
 - `CGO_ENABLED=0`
 
+The compiler inherits the environment of the process (`HOME`, `GOCACHE`, `GOPROXY`, `GOPRIVATE`, `GOFLAGS`, etc), the variables above and `GoEnv` override it. The build cache is the user's default one (`go env GOCACHE`) unless `GOCACHE` is defined.
+
+Packages are built by import path in module mode (`go build github.com/fogfish/scud/test/lambda/go`), the module may be checked out anywhere, `$GOPATH/src` is not required. The module must be the main module of the CDK application or its dependency.
+
+### Change Detection
+
+The asset hash of a function is computed by `go list -deps` using the same build environment as the compiler. It covers:
+* the content of every source file (Go, Cgo, assembly, embedded files) of every package the function depends on that belongs to the main module or a module replaced by a local directory (`replace` directive);
+* the path and version of every other module the function depends on (upgrading a library redeploys the function);
+* the Go toolchain version (`go env GOVERSION`);
+* the build configuration: `GoEnv` (except machine-local variables such as `GOCACHE` or `GOPROXY`), linker flags and variables, `SCUD_COMPRESS_UPX`.
+
+File names are hashed relative to the package import path, so the hash is the same on a laptop and in CI. Files not used by the build (tests, docs, other packages) do not change the hash.
+
+### Function Defaults
+
+The library's defaults are 1 minute timeout and a per-function log group named after the function, with 5 days retention, destroyed with the stack. Define defaults once per scope (application, stack or any construct); the defaults of the nearest ancestor apply, properties given to a function explicitly take precedence.
+
+```go
+scud.SetDefaults(stack, &scud.Defaults{
+  // Functions behind API Gateway HTTP API need timeout under
+  // the integration's limit (30 seconds).
+  Timeout:        awscdk.Duration_Seconds(jsii.Number(25)),
+  MemorySize:     jsii.Number(256),
+  // per-function log groups named <prefix>/<function name>
+  LogGroupPrefix: "/myapp/mystack",
+  LogRetention:   awslogs.RetentionDays_ONE_MONTH,
+  // alternatively, single log group shared by all functions
+  // LogGroup: awslogs.NewLogGroup(/* ... */),
+})
+```
+
+The default function name is `<stack name>-<shortened path of the function>`. AWS Lambda limits function names to 64 characters, the synthesis fails if the name is longer; set `FunctionName` explicitly or shorten the stack name.
+
+### Tenant Isolation
+
+AWS Lambda tenant isolation mode is configured through standard function properties:
+
+```go
+scud.NewFunctionGo(stack, jsii.String("Handler"),
+  &scud.FunctionGoProps{
+    SourceCodeModule: "github.com/fogfish/scud",
+    SourceCodeLambda: "test/lambda/go",
+    FunctionProps: &awslambda.FunctionProps{
+      TenancyConfig: awslambda.TenancyConfig_PER_TENANT(),
+    },
+  },
+)
+```
+
 
 ### Logging
 
@@ -365,7 +420,8 @@ func main() {
   )
 
   // Example endpoint
-  api.AddResource("/example", fun)
+  api.NewAuthorizerPublic().
+    AddResource("/example", fun)
 
   app.Synth(nil)
 }
@@ -373,13 +429,19 @@ func main() {
 
 ### API Gateway 
 
-The library defined presets for AWS API Gateway V2. 
+The library defined presets for AWS API Gateway V2 (HTTP API). 
 
 ```go
 scud.NewGateway(stack, jsii.String("Gateway"),
   &scud.GatewayProps{}
 )
 ```
+
+The gateway has a single auto-deployed `$default` stage, the API is served at the root of the custom domain and of the `execute-api` endpoint.
+
+> **Breaking change**: versions up to v0.13.x created an additional stage `api`, which served the API at `https://{uid}.execute-api.{region}.amazonaws.com/api/...`. The stage is removed, use the `$default` stage endpoint.
+
+Use `gw.CfnStage()` to configure stage settings not covered by the library.
 
 ### API Gateway (Domain Name)
 
@@ -394,13 +456,58 @@ scud.NewGateway(stack, jsii.String("Gateway"),
 )
 ```
 
-### API Gateway (Resources)
-
-The Gateway construct implements the `AddResource` function to associate a Lambda function with a REST API path. It uses the specified path as a prefix, enabling the association of the Lambda function with all subpaths under that prefix. 
+The hosted zone of the record is the host without its first label (e.g. `api.example.com` for `v1.api.example.com`). Use `Zone` to define it explicitly. Use `ApiIdParameter` to export the API id into SSM parameter (see [stable alias](#stable-alias-of-versioned-api)).
 
 ```go
-gateway.AddResource("/example", handler)
+scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{
+    Host:           jsii.String("v1.api.example.com"),
+    Zone:           jsii.String("api.example.com"),
+    TlsArn:         jsii.String("arn:aws:acm:..."),
+    ApiIdParameter: jsii.String("/example/v1/api"),
+  },
+)
 ```
+
+### API Gateway (Resources)
+
+Each authorizer implements the `AddResource` function to associate a Lambda function with a REST API path. It uses the specified path as a prefix, enabling the association of the Lambda function with all subpaths under that prefix (`endpoint` and `endpoint/{any+}`). 
+
+```go
+gateway.NewAuthorizerPublic().
+  AddResource("/example", handler)
+```
+
+### API Gateway (Routes)
+
+Each authorizer implements the `AddRoute` function to associate a Lambda function with the exact route. The path may contain path parameters (`/{instance}/facts`), greedy path parameter (`/files/{proxy+}`) or be the root `/`. Use methods to split read and write operations of one path between functions.
+
+```go
+gateway.NewAuthorizerPublic().
+  AddRoute("/{instance}/facts", &scud.RouteProps{
+    Handler: read,
+    Methods: []apigw2.HttpMethod{apigw2.HttpMethod_GET},
+  }).
+  AddRoute("/{instance}/facts", &scud.RouteProps{
+    Handler:  write,
+    Methods:  []apigw2.HttpMethod{apigw2.HttpMethod_PUT, apigw2.HttpMethod_DELETE},
+    Id:       "WriteFacts", // optional construct id
+    Throttle: &scud.Throttle{RateLimit: 10, BurstLimit: 5},
+  })
+```
+
+The default methods are all methods except `OPTIONS` when CORS is enabled (preflight is answered by API Gateway), otherwise `ANY`. The default construct id of the route is derived from method and the whole path. A single integration per function (and payload format) is shared by all its routes. `RouteProps.AuthorizationScopes` applies to JWT and Cognito authorizers, `RouteProps.Grantee` to IAM authorizer.
+
+### Payload Format
+
+The payload format of Lambda integration is 1.0 by default, set `RouteProps.PayloadFormatVersion` to use 2.0.
+
+| Version | Handler event (`aws-lambda-go/events`) | Context of Lambda authorizer       |
+| ------- | -------------------------------------- | ---------------------------------- |
+| 1.0     | `APIGatewayProxyRequest`               | `RequestContext.Authorizer`        |
+| 2.0     | `APIGatewayV2HTTPRequest`              | `RequestContext.Authorizer.Lambda` |
+
+`AddResource` always uses 1.0. The payload format of Lambda authorizer depends on its response type: `SIMPLE` uses 2.0 (`APIGatewayV2CustomAuthorizerV2Request` → `APIGatewayV2CustomAuthorizerSimpleResponse`), `IAM` uses 1.0 (`APIGatewayV2CustomAuthorizerV1Request` → `APIGatewayCustomAuthorizerResponse`).
 
 ### Authorizer IAM
 
@@ -455,6 +562,101 @@ api := scud.NewGateway(stack, jsii.String("Gateway"),
 
 api.NewAuthorizerJwt("https://{tenant}.eu.auth0.com/", "https://example.com").
   AddResource("/example", handler, "my/scope")
+```
+
+### Authorizer Lambda
+
+Bring your own Lambda (REQUEST) authorizer. By default, the authorizer has no identity source, API Gateway invokes it for every request, including anonymous ones, caching is disabled (API Gateway requires zero TTL without identity source) and it uses simple responses.
+
+```go
+auth := scud.NewFunctionGo(stack, jsii.String("Auth"), /* ... */)
+
+gw.NewAuthorizerLambda(auth, &scud.AuthorizerLambdaProps{
+  // optional, all defaults are shown
+  IdentitySource:  nil,
+  ResponseTypes:   []authorizers.HttpLambdaResponseType{authorizers.HttpLambdaResponseType_SIMPLE},
+  ResultsCacheTtl: awscdk.Duration_Seconds(jsii.Number(0)),
+}).
+  AddRoute("/{instance}", &scud.RouteProps{Handler: handler})
+```
+
+Use package `github.com/fogfish/scud/authorizer` to implement the function:
+
+```go
+import "github.com/fogfish/scud/authorizer"
+
+func main() {
+  lambda.Start(
+    func(req authorizer.Request) (authorizer.Response, error) {
+      key, ok := authorizer.Bearer(req)
+      if !ok {
+        return authorizer.Deny(), nil // 403
+      }
+      // ...
+      return authorizer.Allow(map[string]any{"sub": "..."}), nil
+    },
+  )
+}
+```
+
+Return `Deny()` with nil error to refuse the request, API Gateway answers an error with 500.
+
+Any number of authorizers of any kind can be attached to one gateway. The construct ids are derived uniquely, the first instance of each kind keeps ids of previous versions. Set `AuthorizerLambdaProps.Id` to control the id of Lambda authorizer.
+
+### Stage: Throttling and Access Logs
+
+```go
+scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{
+    // throttling of all routes, use {0, 0} as a kill switch
+    Throttle: &scud.Throttle{RateLimit: 100, BurstLimit: 50},
+    // access logs in JSON format (scud.DefaultAccessLogFormat)
+    // into new log group, or define LogGroup and Format
+    AccessLog: &scud.AccessLog{},
+  },
+)
+```
+
+Route specific throttling is defined by `RouteProps.Throttle`.
+
+### CORS
+
+`AllowOrigins` enables CORS for the origin with default headers (`Authorization`, `Content-Type`). Use `Cors` for full control (or `HttpApiProps.CorsPreflight`):
+
+```go
+scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{
+    Cors: &scud.Cors{
+      AllowOrigins:  []string{"https://example.com"},
+      AllowHeaders:  []string{"Authorization", "Content-Type", "Mcp-Session-Id", "Mcp-Protocol-Version"},
+      ExposeHeaders: []string{"Mcp-Session-Id"},
+    },
+  },
+)
+```
+
+### Stable Alias of Versioned API
+
+A version of API is an immutable deployment with its own host (`v1.api.example.com`), a stable host (`api.example.com`) follows the live version. API Gateway custom domain answers only to its own name, so the alias is a custom domain of its own with an API mapping to the version's API, owned by a stack that outlives versions. Switching the version updates the API mapping in place.
+
+```go
+// versioned stack
+scud.NewGateway(v1, jsii.String("Gateway"),
+  &scud.GatewayProps{
+    Host:           jsii.String("v1.api.example.com"),
+    TlsArn:         jsii.String("arn:aws:acm:..."),
+    ApiIdParameter: jsii.String("/example/v1/api"),
+  },
+)
+
+// alias stack, the record is created at the zone apex by default
+scud.NewAlias(alias, jsii.String("Alias"),
+  &scud.AliasProps{
+    Host:           jsii.String("api.example.com"),
+    TlsArn:         jsii.String("arn:aws:acm:..."),
+    ApiIdParameter: jsii.String("/example/v1/api"), // or ApiId, Api
+  },
+)
 ```
 
 ## HowTo Contribute
