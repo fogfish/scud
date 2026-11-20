@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/fogfish/scud"
@@ -492,5 +493,57 @@ func TestAliasFromParameter(t *testing.T) {
 	template.ResourceCountIs(jsii.String("AWS::ApiGatewayV2::ApiMapping"), jsii.Number(1))
 	template.HasResourceProperties(jsii.String("AWS::Route53::RecordSet"),
 		map[string]any{"Name": "api.example.com.", "HostedZoneId": "ZEX"},
+	)
+}
+
+func TestDomainHostedZone(t *testing.T) {
+	// no context: any Route 53 lookup at synthesis fails the test
+	stack := newStack(t, nil)
+
+	zone := awsroute53.HostedZone_FromHostedZoneAttributes(stack, jsii.String("Zone"),
+		&awsroute53.HostedZoneAttributes{
+			HostedZoneId: jsii.String("ZAPI"),
+			ZoneName:     jsii.String("api.example.com"),
+		},
+	)
+
+	scud.NewGateway(stack, jsii.String("GW"),
+		&scud.GatewayProps{
+			Host:       jsii.String("v1.api.example.com"),
+			HostedZone: zone,
+			TlsArn:     jsii.String("arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000"),
+		},
+	)
+
+	template := assertions.Template_FromStack(stack, nil)
+	template.HasResourceProperties(jsii.String("AWS::Route53::RecordSet"),
+		map[string]any{"Name": "v1.api.example.com.", "Type": "A", "HostedZoneId": "ZAPI"},
+	)
+}
+
+func TestAliasHostedZone(t *testing.T) {
+	// no context: any Route 53 lookup at synthesis fails the test
+	stack := newStack(t, nil)
+
+	zone := awsroute53.HostedZone_FromHostedZoneAttributes(stack, jsii.String("Zone"),
+		&awsroute53.HostedZoneAttributes{
+			HostedZoneId: jsii.String("ZEX"),
+			ZoneName:     jsii.String("example.com"),
+		},
+	)
+
+	scud.NewAlias(stack, jsii.String("Alias"),
+		&scud.AliasProps{
+			Host:       jsii.String("api.example.com"),
+			Zone:       jsii.String("ignored.example.com"),
+			HostedZone: zone,
+			TlsArn:     jsii.String("arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000"),
+			ApiId:      jsii.String("abc123"),
+		},
+	)
+
+	template := assertions.Template_FromStack(stack, nil)
+	template.HasResourceProperties(jsii.String("AWS::Route53::RecordSet"),
+		map[string]any{"Name": "api.example.com.", "Type": "A", "HostedZoneId": "ZEX"},
 	)
 }

@@ -469,6 +469,25 @@ scud.NewGateway(stack, jsii.String("Gateway"),
 )
 ```
 
+`Zone` is resolved with Route 53 lookup at synthesis (`HostedZone_FromLookup`), it requires AWS credentials or `cdk.context.json`. Use `HostedZone` to pass the zone by attributes instead, no lookup is made. It takes precedence over `Zone`, the same option exists at `AliasProps`.
+
+```go
+zone := awsroute53.HostedZone_FromHostedZoneAttributes(stack, jsii.String("Zone"),
+  &awsroute53.HostedZoneAttributes{
+    HostedZoneId: jsii.String("Z0000000000000"),
+    ZoneName:     jsii.String("api.example.com"),
+  },
+)
+
+scud.NewGateway(stack, jsii.String("Gateway"),
+  &scud.GatewayProps{
+    Host:       jsii.String("v1.api.example.com"),
+    HostedZone: zone,
+    TlsArn:     jsii.String("arn:aws:acm:..."),
+  },
+)
+```
+
 ### API Gateway (Resources)
 
 Each authorizer implements the `AddResource` function to associate a Lambda function with a REST API path. It uses the specified path as a prefix, enabling the association of the Lambda function with all subpaths under that prefix (`endpoint` and `endpoint/{any+}`). 

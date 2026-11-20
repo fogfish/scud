@@ -40,7 +40,14 @@ type GatewayProps struct {
 	// Hosted zone (domain name) where the custom domain record is created.
 	// Default is the Host without its first label
 	// (e.g. api.example.com for v1.api.example.com).
+	// The zone is resolved with Route 53 lookup at synthesis,
+	// use HostedZone to avoid the lookup.
 	Zone *string
+
+	// Hosted zone where the custom domain record is created
+	// (e.g. HostedZone_FromHostedZoneAttributes). It takes precedence over Zone,
+	// no lookup is made at synthesis.
+	HostedZone awsroute53.IHostedZone
 
 	// Shortcut to enable CORS for the given origin with default headers.
 	// Use Cors for full control.
@@ -159,7 +166,7 @@ func NewGateway(scope constructs.Construct, id *string, props *GatewayProps) *Ga
 	gw.RestAPI = apigw2.NewHttpApi(gw.Construct, jsii.String("Gateway"), props.HttpApiProps)
 
 	if props.Host != nil && props.TlsArn != nil {
-		gw.Record = newDomainRecord(gw.Construct, props.Host, props.Zone, gw.Domain)
+		gw.Record = newDomainRecord(gw.Construct, props.Host, props.HostedZone, props.Zone, gw.Domain)
 	}
 
 	if props.AccessLog != nil {
