@@ -30,7 +30,13 @@ type AliasProps struct {
 
 	// Hosted zone (domain name) where the record is created.
 	// Default is Host, the record is created at the zone apex.
+	// The zone is resolved with Route 53 lookup at synthesis,
+	// use HostedZone to avoid the lookup.
 	Zone *string
+
+	// Hosted zone where the record is created (e.g. HostedZone_FromHostedZoneAttributes).
+	// It takes precedence over Zone, no lookup is made at synthesis.
+	HostedZone awsroute53.IHostedZone
 
 	// ARN of the certificate for the custom domain name.
 	TlsArn *string
@@ -113,7 +119,7 @@ func NewAlias(scope constructs.Construct, id *string, props *AliasProps) *Alias 
 		},
 	)
 
-	alias.Record = newDomainRecord(alias.Construct, props.Host, zone, alias.Domain)
+	alias.Record = newDomainRecord(alias.Construct, props.Host, props.HostedZone, zone, alias.Domain)
 
 	return alias
 }
@@ -130,21 +136,24 @@ func newDomainName(scope constructs.Construct, host, tlsArn *string) apigw2.Doma
 	)
 }
 
-// create alias record of the custom domain at the hosted zone, the zone is
+// create alias record of the custom domain at the hosted zone. The hosted zone
+// is used as-is if defined, otherwise it is looked up by name. The zone name is
 // the host without first label unless defined explicitly.
-func newDomainRecord(scope constructs.Construct, host, zone *string, domain apigw2.DomainName) awsroute53.ARecord {
-	zoneName := ""
-	if zone != nil {
-		zoneName = *zone
-	} else {
-		zoneName = strings.Join(strings.Split(*host, ".")[1:], ".")
-	}
+func newDomainRecord(scope constructs.Construct, host *string, hz awsroute53.IHostedZone, zone *string, domain apigw2.DomainName) awsroute53.ARecord {
+	if hz == nil {
+		zoneName := ""
+		if zone != nil {
+			zoneName = *zone
+		} else {
+			zoneName = strings.Join(strings.Split(*host, ".")[1:], ".")
+		}
 
-	hz := awsroute53.HostedZone_FromLookup(scope, jsii.String("HZone"),
-		&awsroute53.HostedZoneProviderProps{
-			DomainName: jsii.String(zoneName),
-		},
-	)
+		hz = awsroute53.HostedZone_FromLookup(scope, jsii.String("HZone"),
+			&awsroute53.HostedZoneProviderProps{
+				DomainName: jsii.String(zoneName),
+			},
+		)
+	}
 
 	return awsroute53.NewARecord(scope, jsii.String("ARecord"),
 		&awsroute53.ARecordProps{
