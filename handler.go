@@ -70,6 +70,18 @@ func NewFunctionGo(scope constructs.Construct, id *string, spec *FunctionGoProps
 		props.LogGroup = defaults.logGroup(scope, "Logs"+spec.UniqueID(), props.FunctionName)
 	}
 
+	defaults.logging(logging{
+		format:      &props.LoggingFormat,
+		system:      &props.SystemLogLevelV2,
+		application: &props.ApplicationLogLevelV2,
+		//lint:ignore SA1019 deprecated properties are respected
+		oldFormat: props.LogFormat,
+		//lint:ignore SA1019 deprecated properties are respected
+		oldSystem: props.SystemLogLevel,
+		//lint:ignore SA1019 deprecated properties are respected
+		oldApplication: props.ApplicationLogLevel,
+	})
+
 	// arm64 is default deployment
 	props.Architecture = awslambda.Architecture_ARM_64()
 	if spec.Toolchain != nil && spec.Toolchain.GoEnv != nil {

@@ -157,3 +157,126 @@ func TestFunctionTenantIsolation(t *testing.T) {
 		map[string]any{"TenancyConfig": map[string]any{"TenantIsolationMode": "PER_TENANT"}},
 	)
 }
+
+func TestFunctionLogging(t *testing.T) {
+	json := func(system, application string) map[string]any {
+		return map[string]any{
+			"LogFormat":           "JSON",
+			"SystemLogLevel":      system,
+			"ApplicationLogLevel": application,
+		}
+	}
+	text := map[string]any{
+		"LogFormat":           "Text",
+		"SystemLogLevel":      assertions.Match_Absent(),
+		"ApplicationLogLevel": assertions.Match_Absent(),
+	}
+
+	for name, tt := range map[string]struct {
+		defaults *scud.Defaults
+		props    awslambda.FunctionProps
+		expected map[string]any
+	}{
+		"library": {
+			expected: json("WARN", "INFO"),
+		},
+		"scope": {
+			defaults: &scud.Defaults{
+				SystemLogLevel:      awslambda.SystemLogLevel_INFO,
+				ApplicationLogLevel: awslambda.ApplicationLogLevel_ERROR,
+			},
+			expected: json("INFO", "ERROR"),
+		},
+		"scope opts out": {
+			defaults: &scud.Defaults{LoggingFormat: awslambda.LoggingFormat_TEXT},
+			expected: text,
+		},
+		"function over scope": {
+			defaults: &scud.Defaults{SystemLogLevel: awslambda.SystemLogLevel_INFO},
+			props: awslambda.FunctionProps{
+				SystemLogLevelV2:      awslambda.SystemLogLevel_DEBUG,
+				ApplicationLogLevelV2: awslambda.ApplicationLogLevel_TRACE,
+			},
+			expected: json("DEBUG", "TRACE"),
+		},
+		"function opts out": {
+			props:    awslambda.FunctionProps{LoggingFormat: awslambda.LoggingFormat_TEXT},
+			expected: text,
+		},
+		"function opts in": {
+			defaults: &scud.Defaults{LoggingFormat: awslambda.LoggingFormat_TEXT},
+			props:    awslambda.FunctionProps{LoggingFormat: awslambda.LoggingFormat_JSON},
+			expected: json("WARN", "INFO"),
+		},
+		"deprecated levels": {
+			props: awslambda.FunctionProps{
+				//lint:ignore SA1019 deprecated properties are respected
+				SystemLogLevel: jsii.String("INFO"),
+				//lint:ignore SA1019 deprecated properties are respected
+				ApplicationLogLevel: jsii.String("DEBUG"),
+			},
+			expected: json("INFO", "DEBUG"),
+		},
+		"deprecated format": {
+			//lint:ignore SA1019 deprecated properties are respected
+			props:    awslambda.FunctionProps{LogFormat: jsii.String("Text")},
+			expected: text,
+		},
+		"deprecated json format": {
+			//lint:ignore SA1019 deprecated properties are respected
+			props:    awslambda.FunctionProps{LogFormat: jsii.String("JSON")},
+			expected: json("WARN", "INFO"),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			stack := newStack(t, nil)
+			if tt.defaults != nil {
+				scud.SetDefaults(stack, tt.defaults)
+			}
+
+			scud.NewFunctionGo(stack, jsii.String("f"),
+				&scud.FunctionGoProps{
+					SourceCodeModule: "github.com/fogfish/scud",
+					SourceCodeLambda: "test/lambda/go",
+					FunctionProps:    &tt.props,
+				},
+			)
+
+			template := assertions.Template_FromStack(stack, nil)
+			template.HasResourceProperties(jsii.String("AWS::Lambda::Function"),
+				map[string]any{"LoggingConfig": tt.expected},
+			)
+		})
+	}
+}
+
+func TestContainerLogging(t *testing.T) {
+	for name, tt := range map[string]struct {
+		props    awslambda.DockerImageFunctionProps
+		expected map[string]any
+	}{
+		"library": {
+			expected: map[string]any{"LogFormat": "JSON", "SystemLogLevel": "WARN", "ApplicationLogLevel": "INFO"},
+		},
+		"function": {
+			props:    awslambda.DockerImageFunctionProps{LoggingFormat: awslambda.LoggingFormat_TEXT},
+			expected: map[string]any{"LogFormat": "Text", "SystemLogLevel": assertions.Match_Absent()},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			stack := newStack(t, nil)
+			scud.NewContainerGo(stack, jsii.String("f"),
+				&scud.ContainerGoProps{
+					SourceCodeModule:         "github.com/fogfish/scud",
+					SourceCodeLambda:         "test/lambda/go",
+					DockerImageFunctionProps: &tt.props,
+				},
+			)
+
+			template := assertions.Template_FromStack(stack, nil)
+			template.HasResourceProperties(jsii.String("AWS::Lambda::Function"),
+				map[string]any{"LoggingConfig": tt.expected},
+			)
+		})
+	}
+}
