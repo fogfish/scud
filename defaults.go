@@ -9,11 +9,13 @@
 package scud
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 	"sync"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -45,6 +47,17 @@ type Defaults struct {
 
 	// Removal policy of per-function log groups, the library's default is DESTROY.
 	LogRemovalPolicy awscdk.RemovalPolicy
+
+	// Format of function logs, the library's default is JSON.
+	// Use TEXT to opt out, log levels do not apply to it.
+	LoggingFormat awslambda.LoggingFormat
+
+	// Level of logs written by AWS Lambda itself, the library's default is WARN:
+	// START, END and REPORT lines are not logged. Use INFO to log them.
+	SystemLogLevel awslambda.SystemLogLevel
+
+	// Level of logs written by the function, the library's default is INFO.
+	ApplicationLogLevel awslambda.ApplicationLogLevel
 }
 
 const defaultsConstructId = "ScudDefaults"
@@ -134,6 +147,44 @@ func (d *Defaults) logGroup(scope constructs.Construct, id string, functionName 
 			RemovalPolicy: removal,
 		},
 	)
+}
+
+// logging properties of the function, including deprecated ones.
+// AWS CDK does not accept a property together with its deprecated variant.
+type logging struct {
+	format         *awslambda.LoggingFormat
+	system         *awslambda.SystemLogLevel
+	application    *awslambda.ApplicationLogLevel
+	oldFormat      *string
+	oldSystem      *string
+	oldApplication *string
+}
+
+// is JSON format used, only this format supports log levels
+func (l logging) isJSON() bool {
+	if l.oldFormat != nil {
+		return *l.oldFormat == string(awslambda.LoggingFormat_JSON)
+	}
+	return *l.format == awslambda.LoggingFormat_JSON
+}
+
+// define logging properties that are not given explicitly to the function
+func (d *Defaults) logging(l logging) {
+	if *l.format == "" && l.oldFormat == nil {
+		*l.format = cmp.Or(d.LoggingFormat, awslambda.LoggingFormat_JSON)
+	}
+
+	if !l.isJSON() {
+		return
+	}
+
+	if *l.system == "" && l.oldSystem == nil {
+		*l.system = cmp.Or(d.SystemLogLevel, awslambda.SystemLogLevel_WARN)
+	}
+
+	if *l.application == "" && l.oldApplication == nil {
+		*l.application = cmp.Or(d.ApplicationLogLevel, awslambda.ApplicationLogLevel_INFO)
+	}
 }
 
 // AWS Lambda limits function name to 64 characters

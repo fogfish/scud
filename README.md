@@ -340,6 +340,8 @@ scud.SetDefaults(stack, &scud.Defaults{
   // per-function log groups named <prefix>/<function name>
   LogGroupPrefix: "/myapp/mystack",
   LogRetention:   awslogs.RetentionDays_ONE_MONTH,
+  // log format and levels, see Logging
+  SystemLogLevel: awslambda.SystemLogLevel_INFO,
   // alternatively, single log group shared by all functions
   // LogGroup: awslogs.NewLogGroup(/* ... */),
 })
@@ -370,6 +372,22 @@ The L3 construct automatically creates a log group if one is not specified. It i
 
 > For example, you could use a single log group to store logs for all of the Lambda functions that make up a particular application. 
 - https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-loggroups.html
+
+Functions log in JSON format, with the system log level `WARN` and the application log level `INFO`. AWS Lambda does not write `START`, `END` and `REPORT` lines, which reduces the cost of log ingestion; errors and timeouts are still logged. Duration and memory of an invocation, if you read them from `REPORT` lines, are not available in the log.
+
+Change it for a scope with `SetDefaults`, or for a single function with `FunctionProps`:
+
+```go
+// log START, END and REPORT lines in JSON format
+scud.SetDefaults(stack, &scud.Defaults{
+  SystemLogLevel: awslambda.SystemLogLevel_INFO,
+})
+
+// use AWS Lambda's default: plain text
+scud.SetDefaults(stack, &scud.Defaults{
+  LoggingFormat: awslambda.LoggingFormat_TEXT,
+})
+```
 
 ### Compressing binaries
 

@@ -90,6 +90,18 @@ func NewContainerGo(scope constructs.Construct, id *string, spec *ContainerGoPro
 		props.LogGroup = defaults.logGroup(scope, "LogGroup", props.FunctionName)
 	}
 
+	defaults.logging(logging{
+		format:      &props.LoggingFormat,
+		system:      &props.SystemLogLevelV2,
+		application: &props.ApplicationLogLevelV2,
+		//lint:ignore SA1019 deprecated properties are respected
+		oldFormat: props.LogFormat,
+		//lint:ignore SA1019 deprecated properties are respected
+		oldSystem: props.SystemLogLevel,
+		//lint:ignore SA1019 deprecated properties are respected
+		oldApplication: props.ApplicationLogLevel,
+	})
+
 	// arm64 is default deployment
 	platContainer := "linux/arm64"
 	platCode := awsecrassets.Platform_LINUX_ARM64()
